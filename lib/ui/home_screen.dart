@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/chord_definition.dart';
 import 'app_theme.dart';
-import 'chord_transitions_screen.dart';
+import 'chord_blitz_screen.dart';
 import 'navigation/app_page_route.dart';
 import 'practice_screen.dart';
 import 'widgets/help_sheet.dart';
@@ -92,7 +92,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'שני מצבי תרגול ממוקדים עם משוב חי',
+                    'אימון ממוקד לפי רמת קושי מהספרייה',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                   ),
                   const SizedBox(height: 20),
@@ -101,7 +101,7 @@ class HomeScreen extends StatelessWidget {
                     accentColor: AppColors.turquoise,
                     title: 'אימון אקורד בודד',
                     description:
-                        'בחר אקורד וקבל משוב בזמן אמת על כל מיתר',
+                        'בחר אקורד לפי רמה וקבל משוב בזמן אמת על כל מיתר',
                     badge: 'מדויק',
                     onTap: () {
                       Navigator.of(context).push(
@@ -113,16 +113,16 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   _ModeCard(
-                    icon: Icons.swap_horiz_rounded,
-                    accentColor: AppColors.amberBright,
-                    title: 'אימון מעברי אקורדים',
+                    icon: Icons.flash_on_rounded,
+                    accentColor: AppColors.amber,
+                    title: 'אתגר האקורדים',
                     description:
-                        'תרגל מעברים בין שני אקורדים בקצב מטרונום',
-                    badge: 'גיימיפייד',
+                        '30 שניות — נגנו אקורדים מהר, צברו ניקוד ורצפים',
+                    badge: 'משחק',
                     onTap: () {
                       Navigator.of(context).push(
                         AppPageRoute<void>(
-                          page: ChordTransitionsScreen(catalog: catalog),
+                          page: ChordBlitzScreen(catalog: catalog),
                         ),
                       );
                     },
@@ -143,7 +143,7 @@ class HomeScreen extends StatelessWidget {
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'טיפ: השתמש ב"זיהוי חופשי" לתרגול ללא אקורד יעד, או בספריית האקורדים ללמוד אצבועים.',
+                            'טיפ: בספריית האקורדים תמצאו חלוקה ל־5 רמות קושי. התחילו ברמה 1 והתקדמו בהדרגה.',
                             style: TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 13,

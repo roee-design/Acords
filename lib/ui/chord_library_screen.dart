@@ -1,47 +1,44 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../audio/chord_audio_service.dart';
 import '../models/chord_definition.dart';
 import 'app_theme.dart';
 import 'widgets/chord_fretboard_chart.dart';
 import 'widgets/help_sheet.dart';
 
-/// Ordered display of the chord catalog in a responsive grid.
-class ChordLibraryScreen extends StatelessWidget {
+/// Chord catalog grid, filtered by difficulty / technique level.
+class ChordLibraryScreen extends StatefulWidget {
   const ChordLibraryScreen({super.key, required this.catalog});
 
   final ChordCatalog catalog;
 
-  static const _displayOrder = [
-    'c_major',
-    'd_major',
-    'e_major',
-    'g_major',
-    'a_major',
-    'a_minor',
-    'e_minor',
-    'd_minor',
-    'f_major',
-    'b_major',
-    'b_minor',
-    'c_7',
-    'g_7',
-    'd_7',
-    'e_7',
-    'a_7',
-  ];
+  @override
+  State<ChordLibraryScreen> createState() => _ChordLibraryScreenState();
+}
 
-  List<ChordDefinition> get _orderedChords {
-    final byId = {for (final c in catalog.chords) c.id: c};
-    return _displayOrder
-        .map((id) => byId[id])
-        .whereType<ChordDefinition>()
-        .toList();
+class _ChordLibraryScreenState extends State<ChordLibraryScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: ChordDifficultyLevels.max,
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final chords = _orderedChords;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('ספריית אקורדים'),
@@ -51,42 +48,52 @@ class ChordLibraryScreen extends StatelessWidget {
             child: Center(child: HelpButton(topic: HelpTopic.chordLibrary)),
           ),
         ],
-      ),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
-                child: Text(
-                  'לחץ על אקורד לצפייה בדיאגרמת הסריגים',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelColor: AppColors.turquoise,
+          unselectedLabelColor: AppColors.textMuted,
+          indicatorColor: AppColors.turquoise,
+          tabs: [
+            for (var level = ChordDifficultyLevels.min;
+                level <= ChordDifficultyLevels.max;
+                level++)
+              Tab(
+                height: 46,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      ChordDifficultyLevels.labelFor(level),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      ChordDifficultyLevels.categoryFor(level),
+                      style: const TextStyle(fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.crossAxisExtent;
-                  final crossAxisCount = width >= 400 ? 3 : 2;
-
-                  return SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.88,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _ChordGridCard(chord: chords[index]),
-                      childCount: chords.length,
-                    ),
-                  );
-                },
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            for (var level = ChordDifficultyLevels.min;
+                level <= ChordDifficultyLevels.max;
+                level++)
+              _DifficultyChordGrid(
+                chords: widget.catalog.chordsForDifficulty(level),
+                category: ChordDifficultyLevels.categoryFor(level),
+                referenceA4Hz: widget.catalog.referenceA4Hz,
               ),
-            ),
           ],
         ),
       ),
@@ -94,11 +101,83 @@ class ChordLibraryScreen extends StatelessWidget {
   }
 }
 
+class _DifficultyChordGrid extends StatelessWidget {
+  const _DifficultyChordGrid({
+    required this.chords,
+    required this.category,
+    required this.referenceA4Hz,
+  });
+
+  final List<ChordDefinition> chords;
+  final String category;
+  final double referenceA4Hz;
+
+  @override
+  Widget build(BuildContext context) {
+    if (chords.isEmpty) {
+      return Center(
+        child: Text(
+          'אין אקורדים ברמה זו עדיין',
+          style: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.8)),
+        ),
+      );
+    }
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Text(
+              category,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+          sliver: SliverLayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.crossAxisExtent;
+              final crossAxisCount = width >= 420 ? 3 : 2;
+
+              return SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.92,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _ChordGridCard(
+                    chord: chords[index],
+                    referenceA4Hz: referenceA4Hz,
+                  ),
+                  childCount: chords.length,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Compact grid tile with a fixed-height fretboard chart — no overflow.
 class _ChordGridCard extends StatefulWidget {
-  const _ChordGridCard({required this.chord});
+  const _ChordGridCard({
+    required this.chord,
+    required this.referenceA4Hz,
+  });
 
   final ChordDefinition chord;
+  final double referenceA4Hz;
 
   @override
   State<_ChordGridCard> createState() => _ChordGridCardState();
@@ -134,7 +213,20 @@ class _ChordGridCardState extends State<_ChordGridCard>
     await _scaleController.reverse();
     await _scaleController.forward();
     if (!mounted) return;
-    await _ChordDetailSheet.show(context, widget.chord);
+    await _ChordDetailSheet.show(
+      context,
+      widget.chord,
+      referenceA4Hz: widget.referenceA4Hz,
+    );
+  }
+
+  void _playChord() {
+    unawaited(
+      ChordAudioService.instance.playChord(
+        widget.chord,
+        referenceA4Hz: widget.referenceA4Hz,
+      ),
+    );
   }
 
   @override
@@ -154,44 +246,59 @@ class _ChordGridCardState extends State<_ChordGridCard>
             onTap: _onTap,
             borderRadius: BorderRadius.circular(20),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.4),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
                           ),
-                        ),
-                        child: Text(
-                          chord.displayName,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: accent == AppColors.amber
-                                ? AppColors.amberBright
-                                : AppColors.turquoise,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: accent.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Text(
+                            chord.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: accent == AppColors.amber
+                                  ? AppColors.amberBright
+                                  : AppColors.turquoise,
+                            ),
                           ),
                         ),
                       ),
-                      const Spacer(),
+                      IconButton(
+                        tooltip: 'השמע אקורד',
+                        onPressed: _playChord,
+                        icon: const Icon(Icons.volume_up_rounded, size: 18),
+                        color: AppColors.turquoise,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                      ),
                       Icon(
                         Icons.zoom_in_rounded,
-                        size: 16,
+                        size: 15,
                         color: AppColors.textMuted.withValues(alpha: 0.6),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Expanded(
                     child: ChordFretboardFrame(
                       chord: chord,
@@ -210,16 +317,27 @@ class _ChordGridCardState extends State<_ChordGridCard>
 
 /// Bottom sheet — enlarged fretboard only, no text list.
 class _ChordDetailSheet extends StatelessWidget {
-  const _ChordDetailSheet({required this.chord});
+  const _ChordDetailSheet({
+    required this.chord,
+    required this.referenceA4Hz,
+  });
 
   final ChordDefinition chord;
+  final double referenceA4Hz;
 
-  static Future<void> show(BuildContext context, ChordDefinition chord) {
+  static Future<void> show(
+    BuildContext context,
+    ChordDefinition chord, {
+    required double referenceA4Hz,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ChordDetailSheet(chord: chord),
+      builder: (_) => _ChordDetailSheet(
+        chord: chord,
+        referenceA4Hz: referenceA4Hz,
+      ),
     );
   }
 
@@ -231,9 +349,9 @@ class _ChordDetailSheet extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: DraggableScrollableSheet(
-        initialChildSize: 0.48,
+        initialChildSize: 0.5,
         minChildSize: 0.32,
-        maxChildSize: 0.72,
+        maxChildSize: 0.75,
         expand: false,
         builder: (context, scrollController) {
           return Container(
@@ -291,6 +409,19 @@ class _ChordDetailSheet extends StatelessWidget {
                           ),
                         ),
                       ),
+                      IconButton(
+                        tooltip: 'השמע אקורד',
+                        onPressed: () {
+                          unawaited(
+                            ChordAudioService.instance.playChord(
+                              chord,
+                              referenceA4Hz: referenceA4Hz,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.volume_up_rounded),
+                        color: AppColors.turquoise,
+                      ),
                       const Spacer(),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
@@ -299,7 +430,16 @@ class _ChordDetailSheet extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${ChordDifficultyLevels.labelFor(chord.difficulty)} · ${chord.category}',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   ChordFretboardFrame(
                     chord: chord,
                     accent: accent,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../audio/audio_analyzer.dart';
+import '../audio/chord_audio_service.dart';
 import '../audio/fft_processor.dart';
 import '../audio/mic_capture_guard.dart';
 import '../chord/chord_matcher.dart';
@@ -57,14 +58,22 @@ class _PracticeScreenState extends State<PracticeScreen> {
   var _showConfetti = false;
   var _confettiTick = 0;
   var _wasPerfect = false;
+  var _selectedDifficulty = 1;
   /// Serializes stop/start so tab/nav switches cannot leave the mic on.
   var _lifecycleEpoch = 0;
   String? _errorMessage;
 
+  List<ChordDefinition> get _chordsForLevel =>
+      widget.catalog.chordsForDifficulty(_selectedDifficulty);
+
   @override
   void initState() {
     super.initState();
-    _selectedChord = widget.catalog.chords.first;
+    final level1 = widget.catalog.chordsForDifficulty(1);
+    _selectedChord = level1.isNotEmpty
+        ? level1.first
+        : widget.catalog.chordsByDifficultyThenName.first;
+    _selectedDifficulty = _selectedChord.difficulty;
     _feedback = _matcher.idleFeedback(_selectedChord);
 
     _feedbackSubscription = _analyzer.feedbackStream.listen(
@@ -145,6 +154,38 @@ class _PracticeScreenState extends State<PracticeScreen> {
         });
       }
     });
+  }
+
+  Future<void> _onDifficultyChanged(int level) async {
+    if (level == _selectedDifficulty) return;
+    final chords = widget.catalog.chordsForDifficulty(level);
+    if (chords.isEmpty) return;
+
+    final wasListening = _listening;
+    if (wasListening) {
+      await _analyzer.stop();
+    }
+
+    final next = chords.first;
+    setState(() {
+      _selectedDifficulty = level;
+      _selectedChord = next;
+      _feedback = _matcher.idleFeedback(next);
+      _errorMessage = null;
+      _listening = false;
+      _wasPerfect = false;
+      _successGlow = false;
+      _showConfetti = false;
+    });
+
+    _analyzer.setTargetChord(
+      next,
+      referenceA4Hz: widget.catalog.referenceA4Hz,
+    );
+
+    if (wasListening) {
+      await _startListening();
+    }
   }
 
   Future<void> _onChordChanged(ChordDefinition? chord) async {
@@ -282,8 +323,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -292,37 +333,89 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 label: 'אקורד יעד',
                 chord: _selectedChord,
                 showFretboard: false,
+                compact: true,
                 successGlow: _successGlow,
                 showConfetti: _showConfetti,
                 confettiTick: _confettiTick,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const Text(
+                        'רמת קושי',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            for (var level = ChordDifficultyLevels.min;
+                                level <= ChordDifficultyLevels.max;
+                                level++) ...[
+                              if (level > ChordDifficultyLevels.min)
+                                const SizedBox(width: 6),
+                              FilterChip(
+                                label: Text(
+                                  ChordDifficultyLevels.labelFor(level),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                selected: _selectedDifficulty == level,
+                                onSelected: _busy
+                                    ? null
+                                    : (_) => _onDifficultyChanged(level),
+                                selectedColor:
+                                    AppColors.turquoise.withValues(alpha: 0.25),
+                                checkmarkColor: AppColors.turquoise,
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        ChordDifficultyLevels.categoryFor(_selectedDifficulty),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       const Text(
                         'בחר אקורד',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       DropdownButtonFormField<ChordDefinition>(
-                        key: ValueKey(_selectedChord.id),
+                        key: ValueKey(
+                          '${_selectedDifficulty}_${_selectedChord.id}',
+                        ),
                         initialValue: _selectedChord,
                         isExpanded: true,
                         dropdownColor: AppColors.surfaceElevated,
                         decoration: const InputDecoration(
+                          isDense: true,
                           contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
+                            horizontal: 12,
+                            vertical: 10,
                           ),
                         ),
-                        items: widget.catalog.chords
+                        items: _chordsForLevel
                             .map(
                               (chord) => DropdownMenuItem(
                                 value: chord,
@@ -336,7 +429,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               FilledButton.icon(
                 onPressed: _busy ? null : _toggleListening,
                 icon: Icon(
@@ -350,6 +443,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                           : 'התחל האזנה',
                 ),
                 style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
                   backgroundColor: _listening
                       ? AppColors.error
                       : AppColors.turquoise,
@@ -358,38 +452,64 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
               ),
               if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 Text(
                   _errorMessage!,
-                  style: const TextStyle(color: AppColors.error),
+                  style: const TextStyle(color: AppColors.error, fontSize: 13),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-              const SizedBox(height: 20),
-              Text(
-                'דיאגרמת ${_selectedChord.displayName}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'דיאגרמת ${_selectedChord.displayName}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'השמע אקורד',
+                    onPressed: () {
+                      unawaited(
+                        ChordAudioService.instance.playChord(
+                          _selectedChord,
+                          referenceA4Hz: widget.catalog.referenceA4Hz,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.volume_up_rounded),
+                    color: AppColors.turquoise,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Expanded(
+                child: ChordFretboardFrame(
+                  chord: _selectedChord,
+                  borderRadius: 16,
+                  liveStatuses: liveStatuses,
                 ),
               ),
-              const SizedBox(height: 10),
-              ChordFretboardFrame(
-                chord: _selectedChord,
-                borderRadius: 16,
-                liveStatuses: liveStatuses,
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               ChordFretboardLegend(
                 accent: chordAccentColor(_selectedChord),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               ChordCoachTipCard(
                 tip: tip,
                 listening: _listening,
                 feedback: feedback,
+                compact: true,
               ),
             ],
           ),

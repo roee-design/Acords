@@ -12,12 +12,16 @@ class CentsTunerGauge extends StatelessWidget {
     this.maxCents = 50,
     this.active = true,
     this.height = 160,
+    this.compact = false,
   });
 
   final double? centsOffset;
   final double maxCents;
   final bool active;
+
+  /// Fixed paint height. Ignored when parent gives a bounded height (e.g. [Expanded]).
   final double height;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -36,87 +40,130 @@ class CentsTunerGauge extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-        child: Column(
-          children: [
-            const Text(
-              'דיוק כוונון',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.4,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: height,
-              width: double.infinity,
-              child: CustomPaint(
-                painter: _CentsGaugePainter(
-                  cents: cents,
-                  maxCents: maxCents,
-                  accent: accent,
-                  active: active,
+        padding: EdgeInsets.fromLTRB(
+          compact ? 12 : 16,
+          compact ? 10 : 20,
+          compact ? 12 : 16,
+          compact ? 8 : 12,
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final fill = constraints.hasBoundedHeight &&
+                constraints.maxHeight.isFinite;
+
+            return Column(
+              children: [
+                Text(
+                  'דיוק כוונון',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                    fontSize: compact ? 12 : 14,
+                  ),
                 ),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 200),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: accent,
-                        height: 1,
+                SizedBox(height: compact ? 4 : 8),
+                if (fill)
+                  Expanded(
+                    child: CustomPaint(
+                      painter: _CentsGaugePainter(
+                        cents: cents,
+                        maxCents: maxCents,
+                        accent: accent,
+                        active: active,
                       ),
-                      child: Text(
-                        centsOffset == null
-                            ? '—'
-                            : '${centsOffset! > 0 ? '+' : ''}${centsOffset!.toStringAsFixed(0)}',
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 200),
+                            style: TextStyle(
+                              fontSize: compact ? 24 : 28,
+                              fontWeight: FontWeight.bold,
+                              color: accent,
+                              height: 1,
+                            ),
+                            child: Text(
+                              centsOffset == null
+                                  ? '—'
+                                  : '${centsOffset! > 0 ? '+' : ''}${centsOffset!.toStringAsFixed(0)}',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: height,
+                    width: double.infinity,
+                    child: CustomPaint(
+                      painter: _CentsGaugePainter(
+                        cents: cents,
+                        maxCents: maxCents,
+                        accent: accent,
+                        active: active,
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 200),
+                            style: TextStyle(
+                              fontSize: compact ? 24 : 28,
+                              fontWeight: FontWeight.bold,
+                              color: accent,
+                              height: 1,
+                            ),
+                            child: Text(
+                              centsOffset == null
+                                  ? '—'
+                                  : '${centsOffset! > 0 ? '+' : ''}${centsOffset!.toStringAsFixed(0)}',
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              cents == null
-                  ? 'ממתין לצליל…'
-                  : 'סנט',
-              style: TextStyle(
-                color: accent.withValues(alpha: 0.85),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+                const SizedBox(height: 2),
                 Text(
-                  'נמוך',
+                  cents == null ? 'ממתין לצליל…' : 'סנט',
                   style: TextStyle(
-                    color: AppColors.textMuted.withValues(alpha: 0.7),
-                    fontSize: 12,
+                    color: accent.withValues(alpha: 0.85),
+                    fontSize: compact ? 12 : 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                Container(
-                  width: 2,
-                  height: 10,
-                  color: AppColors.success.withValues(alpha: 0.6),
-                ),
-                Text(
-                  'גבוה',
-                  style: TextStyle(
-                    color: AppColors.textMuted.withValues(alpha: 0.7),
-                    fontSize: 12,
-                  ),
+                SizedBox(height: compact ? 4 : 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'נמוך',
+                      style: TextStyle(
+                        color: AppColors.textMuted.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                    Container(
+                      width: 2,
+                      height: 10,
+                      color: AppColors.success.withValues(alpha: 0.6),
+                    ),
+                    Text(
+                      'גבוה',
+                      style: TextStyle(
+                        color: AppColors.textMuted.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

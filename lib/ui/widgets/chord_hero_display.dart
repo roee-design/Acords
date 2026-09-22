@@ -17,6 +17,7 @@ class ChordHeroDisplay extends StatelessWidget {
     this.confettiTick = 0,
     this.subtitle,
     this.showFretboard = true,
+    this.compact = false,
   });
 
   final String chordName;
@@ -27,12 +28,17 @@ class ChordHeroDisplay extends StatelessWidget {
   final int confettiTick;
   final String? subtitle;
   final bool showFretboard;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final accent = chord != null
         ? chordAccentColor(chord!)
         : AppColors.turquoise;
+    final radius = compact ? 16.0 : 22.0;
+    final pad = compact
+        ? const EdgeInsets.fromLTRB(16, 12, 16, 12)
+        : const EdgeInsets.fromLTRB(24, 24, 24, 20);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -42,7 +48,7 @@ class ChordHeroDisplay extends StatelessWidget {
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(radius),
             boxShadow: successGlow
                 ? [
                     BoxShadow(
@@ -59,7 +65,7 @@ class ChordHeroDisplay extends StatelessWidget {
                 : [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 16,
+                      blurRadius: compact ? 10 : 16,
                       offset: const Offset(0, 8),
                     ),
                   ],
@@ -68,7 +74,7 @@ class ChordHeroDisplay extends StatelessWidget {
             margin: EdgeInsets.zero,
             color: AppColors.surfaceElevated,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(radius),
               side: BorderSide(
                 color: successGlow
                     ? AppColors.success
@@ -77,19 +83,20 @@ class ChordHeroDisplay extends StatelessWidget {
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+              padding: pad,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
+                      fontSize: compact ? 12 : 14,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: compact ? 4 : 10),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 420),
                     switchInCurve: Curves.easeOutCubic,
@@ -108,7 +115,7 @@ class ChordHeroDisplay extends StatelessWidget {
                       chordName,
                       key: ValueKey(chordName),
                       style: TextStyle(
-                        fontSize: 52,
+                        fontSize: compact ? 36 : 52,
                         fontWeight: FontWeight.bold,
                         color: successGlow
                             ? AppColors.success

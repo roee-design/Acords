@@ -42,6 +42,7 @@ class AudioAnalyzer {
   ChordMatcher? _matcher;
   DateTime? _lastAnalysisTime;
   DateTime? _ignoreDetectionsUntil;
+  DateTime? _lastWaitingLogAt;
   var _isListening = false;
   var _disposed = false;
   /// Bumped on every stop/dispose so a late [start] cannot leave the mic on.
@@ -52,6 +53,14 @@ class AudioAnalyzer {
 
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
+
+  /// Nominal FFT frame duration — used by transitions timing compensation.
+  double get fftBufferLatencyMs => (fftSize / sampleRate) * 1000.0;
+
+  /// True while blank/grace is discarding analysis (PCM may still accumulate).
+  bool get isBlanking =>
+      _ignoreDetectionsUntil != null &&
+      DateTime.now().isBefore(_ignoreDetectionsUntil!);
 
   Future<bool> ensureMicrophonePermission() async {
     final recordGranted = await _recorder.hasPermission();
@@ -67,6 +76,7 @@ class AudioAnalyzer {
     ChordDefinition chord, {
     double referenceA4Hz = 440,
     Duration? gracePeriod,
+    bool resetAnalysis = true,
   }) {
     _freePlayMode = false;
     _freePlayChords = const [];
@@ -74,9 +84,10 @@ class AudioAnalyzer {
     _referenceA4Hz = referenceA4Hz;
     _matcher ??= ChordMatcher(fftProcessor: _fftProcessor);
 
-    resetAnalysisState(gracePeriod: gracePeriod);
-
-    _emitIdleFeedback(chord);
+    if (resetAnalysis) {
+      resetAnalysisState(gracePeriod: gracePeriod);
+      _emitIdleFeedback(chord);
+    }
   }
 
   void setFreePlayCatalog(
@@ -105,6 +116,31 @@ class AudioAnalyzer {
     _ignoreDetectionsUntil = gracePeriod == null
         ? null
         : DateTime.now().add(gracePeriod);
+    if (gracePeriod != null) {
+      // ignore: avoid_print
+      print(
+        '[Acords Audio] grace START ${gracePeriod.inMilliseconds}ms '
+        '(clear buffer once; PCM fills during grace)',
+      );
+    }
+  }
+
+  /// Short mute so metronome click energy does not reach the FFT.
+  /// Clears the buffer once at the start; PCM still accumulates during blank
+  /// so the ring can be full when analysis resumes (avoids +FFT refill delay).
+  void blankInput({
+    Duration duration = const Duration(milliseconds: 70),
+  }) {
+    final until = DateTime.now().add(duration);
+    if (_ignoreDetectionsUntil == null ||
+        until.isAfter(_ignoreDetectionsUntil!)) {
+      _ignoreDetectionsUntil = until;
+    }
+    _ringBuffer.clear();
+    _fftProcessor.reset();
+    _lastAnalysisTime = null;
+    // ignore: avoid_print
+    print('[Acords Audio] blank ${duration.inMilliseconds}ms (buffer cleared once)');
   }
 
   Future<void> start() {
@@ -273,15 +309,20 @@ class AudioAnalyzer {
     final ignoreUntil = _ignoreDetectionsUntil;
     if (ignoreUntil != null) {
       if (DateTime.now().isBefore(ignoreUntil)) {
-        // Hold the matcher closed during grace; discard audio so no stale frame remains.
-        _ringBuffer.clear();
+        // Skip FFT during blank/grace, but keep filling the ring buffer so a
+        // strum on the tick is ready to analyze as soon as the window ends.
         return;
       }
       _ignoreDetectionsUntil = null;
-      _ringBuffer.clear();
+      // Keep PCM already accumulated; only reset spectral state.
       _fftProcessor.reset();
       _lastAnalysisTime = null;
-      return;
+      // ignore: avoid_print
+      print(
+        '[Acords Audio] grace/blank END — resume FFT '
+        '(bufferFull=${_ringBuffer.isFull})',
+      );
+      // Fall through and analyze this chunk if the ring is already full.
     }
 
     if (!_ringBuffer.isFull) {
@@ -314,6 +355,26 @@ class AudioAnalyzer {
             referenceA4Hz: _referenceA4Hz,
             inputLevel: level,
           );
+
+    if (feedback.matchStatus == ChordMatchStatus.waiting) {
+      final last = _lastWaitingLogAt;
+      if (last == null || now.difference(last).inMilliseconds >= 500) {
+        _lastWaitingLogAt = now;
+        // ignore: avoid_print
+        print(
+          '[Acords Audio] blocked RMS/waiting level=${level.toStringAsFixed(4)} '
+          't_detect=${now.millisecondsSinceEpoch}',
+        );
+      }
+    } else if (feedback.matchStatus == ChordMatchStatus.perfect ||
+        feedback.matchStatus == ChordMatchStatus.close) {
+      // ignore: avoid_print
+      print(
+        '[Acords Audio] detect ${feedback.matchStatus.name} '
+        'chord=${feedback.chordName} level=${level.toStringAsFixed(4)} '
+        't_detect=${now.millisecondsSinceEpoch}',
+      );
+    }
 
     if (!_feedbackController.isClosed) {
       _feedbackController.add(feedback);

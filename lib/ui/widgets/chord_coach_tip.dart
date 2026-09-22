@@ -110,11 +110,13 @@ class ChordCoachTipCard extends StatelessWidget {
     required this.tip,
     required this.listening,
     required this.feedback,
+    this.compact = false,
   });
 
   final ChordCoachTip tip;
   final bool listening;
   final ChordFeedback? feedback;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -122,10 +124,10 @@ class ChordCoachTipCard extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 12 : 18),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(compact ? 14 : 18),
         border: Border.all(color: colors.border, width: 1.5),
         boxShadow: tip.tone == ChordMatchStatus.perfect
             ? [
@@ -143,6 +145,7 @@ class ChordCoachTipCard extends StatelessWidget {
               ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -153,7 +156,7 @@ class ChordCoachTipCard extends StatelessWidget {
                         ? Icons.music_note_rounded
                         : Icons.tips_and_updates_rounded,
                 color: colors.text,
-                size: 22,
+                size: compact ? 18 : 22,
               ),
               const SizedBox(width: 8),
               Text(
@@ -163,19 +166,21 @@ class ChordCoachTipCard extends StatelessWidget {
                 style: TextStyle(
                   color: colors.text,
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
+                  fontSize: compact ? 13 : 14,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: compact ? 6 : 10),
           Text(
             tip.message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            maxLines: compact ? 3 : null,
+            overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,
-              fontSize: 16,
+              fontSize: compact ? 14 : 16,
               height: 1.35,
             ),
           ),

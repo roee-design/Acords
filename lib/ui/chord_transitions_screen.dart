@@ -39,7 +39,8 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
   static const int _sampleRate = 44100;
   static const int _minBpm = 40;
   static const int _maxBpm = 120;
-  static const Duration _targetSwitchGracePeriod = Duration(milliseconds: 350);
+  /// Natural timing window vs nearest metronome tick (strum + FFT lag).
+  static const int _timingToleranceMs = 250;
 
   final AudioAnalyzer _analyzer = AudioAnalyzer(
     sampleRate: _sampleRate,
@@ -76,11 +77,15 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
   var _currentBeat = 1;
   var _detectedThisMeasure = false;
   var _perfectThisMeasure = false;
+  /// True when a correct chord was heard within ±[_timingToleranceMs] of a tick.
+  var _onTimeThisMeasure = false;
   var _consecutivePerfect = 0;
   var _consecutiveFailures = 0;
   var _successGlow = false;
   var _showConfetti = false;
   var _confettiTick = 0;
+  /// Most recent metronome tick — used to measure distance to nearest beat.
+  DateTime? _lastTickAt;
   /// Serializes stop/start so leaving the screen cannot leave mic/metronome on.
   var _lifecycleEpoch = 0;
   String? _measureFeedback;
@@ -208,6 +213,24 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
   ChordDefinition get _nextChord =>
       _currentTarget.id == _chordA.id ? _chordB : _chordA;
 
+  Duration get _beatInterval => Duration(
+        milliseconds: (60000 / _bpm).round(),
+      );
+
+  void _recordTick(DateTime at) {
+    _lastTickAt = at;
+  }
+
+  /// Absolute ms from [tDetect] to the nearest metronome tick (previous or next).
+  int? _msToNearestTick(DateTime tDetect) {
+    final last = _lastTickAt;
+    if (last == null) return null;
+    final toLast = (tDetect.difference(last).inMilliseconds).abs();
+    final next = last.add(_beatInterval);
+    final toNext = (tDetect.difference(next).inMilliseconds).abs();
+    return toLast < toNext ? toLast : toNext;
+  }
+
   void _onChordFeedback(ChordFeedback feedback) {
     if (!mounted) return;
 
@@ -215,23 +238,40 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
 
     if (!_isRunning) return;
     if (feedback.chordId != _currentTarget.id) return;
+    if (feedback.matchStatus == ChordMatchStatus.waiting) return;
 
-    if (feedback.matchStatus == ChordMatchStatus.perfect) {
-      if (!_detectedThisMeasure || !_perfectThisMeasure) {
-        setState(() {
-          _detectedThisMeasure = true;
-          _perfectThisMeasure = true;
-        });
+    final isChordCorrect = feedback.matchStatus == ChordMatchStatus.perfect;
+    if (!isChordCorrect) {
+      if (feedback.matchStatus == ChordMatchStatus.close &&
+          !_detectedThisMeasure) {
+        setState(() => _detectedThisMeasure = true);
       }
-    } else if (feedback.matchStatus == ChordMatchStatus.close &&
-        !_detectedThisMeasure) {
-      setState(() => _detectedThisMeasure = true);
+      return;
+    }
+
+    // Continuous detection: score timing against the nearest tick.
+    final tDetect = DateTime.now();
+    final distMs = _msToNearestTick(tDetect);
+    if (distMs == null) return;
+
+    final onTime = distMs <= _timingToleranceMs;
+    // ignore: avoid_print
+    print(
+      '[Acords Timing] perfect chord=${feedback.chordName} '
+      'distNearestTick=${distMs}ms onTime=$onTime '
+      '(tol=±${_timingToleranceMs}ms)',
+    );
+
+    if (!_perfectThisMeasure || (onTime && !_onTimeThisMeasure)) {
+      setState(() {
+        _detectedThisMeasure = true;
+        _perfectThisMeasure = true;
+        if (onTime) {
+          _onTimeThisMeasure = true;
+        }
+      });
     }
   }
-
-  Duration get _beatInterval => Duration(
-        milliseconds: (60000 / _bpm).round(),
-      );
 
   void _restartMetronomeTimer() {
     _metronomeTimer?.cancel();
@@ -251,6 +291,7 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
   }
 
   void _playMetronomeClick({required bool accent}) {
+    // No mic blanking — continuous FFT must hear strums on the tick.
     if (!_metronomeSound) return;
     if (!_clickReady || _clickPlayers.isEmpty) return;
 
@@ -297,6 +338,8 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
 
   void _onBeatTick() {
     if (!mounted) return;
+    final tickAt = DateTime.now();
+    _recordTick(tickAt);
     _triggerBeatPulse();
 
     if (_currentBeat == 4) {
@@ -306,7 +349,8 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
         _currentTarget = _nextChord;
       });
       _playMetronomeClick(accent: true);
-      _applyAnalyzerTarget(gracePeriod: _targetSwitchGracePeriod);
+      // Retarget without clearing FFT — keep listening continuously.
+      _applyAnalyzerTarget(resetAnalysis: false);
     } else {
       setState(() {
         _currentBeat++;
@@ -318,29 +362,39 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
     }
   }
 
-  void _applyAnalyzerTarget({Duration? gracePeriod}) {
+  void _applyAnalyzerTarget({bool resetAnalysis = true}) {
     _analyzer.setTargetChord(
       _currentTarget,
       referenceA4Hz: widget.catalog.referenceA4Hz,
-      gracePeriod: gracePeriod,
+      resetAnalysis: resetAnalysis,
     );
   }
 
   void _endMeasure() {
-    if (_detectedThisMeasure) {
+    final isChordCorrect = _perfectThisMeasure;
+    final onTime = _onTimeThisMeasure;
+
+    // ignore: avoid_print
+    print(
+      '[Acords Timing] measure END isChordCorrect=$isChordCorrect onTime=$onTime',
+    );
+
+    if (isChordCorrect && onTime) {
       _measureFeedback = 'בזמן! 🎯';
       _consecutiveFailures = 0;
       _triggerSuccessEffects();
 
-      if (_perfectThisMeasure) {
-        _consecutivePerfect++;
-        if (_gradualSpeedUp && _consecutivePerfect >= 2) {
-          _adjustBpm(5);
-          _consecutivePerfect = 0;
-        }
-      } else {
+      _consecutivePerfect++;
+      if (_gradualSpeedUp && _consecutivePerfect >= 2) {
+        _adjustBpm(5);
         _consecutivePerfect = 0;
       }
+    } else if (isChordCorrect && !onTime) {
+      _consecutivePerfect = 0;
+      _measureFeedback = 'אקורד נכון, אבל לא בזמן';
+    } else if (_detectedThisMeasure) {
+      _consecutivePerfect = 0;
+      _measureFeedback = 'האקורד לא מדויק';
     } else {
       _consecutivePerfect = 0;
       _consecutiveFailures++;
@@ -354,6 +408,7 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
 
     _detectedThisMeasure = false;
     _perfectThisMeasure = false;
+    _onTimeThisMeasure = false;
     setState(() {});
   }
 
@@ -384,6 +439,7 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
       _consecutiveFailures = 0;
       _detectedThisMeasure = false;
       _perfectThisMeasure = false;
+      _onTimeThisMeasure = false;
       _successGlow = false;
       _showConfetti = false;
       _currentBeat = 1;
@@ -414,6 +470,8 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
         _busy = false;
       });
 
+      final startBeat = DateTime.now();
+      _recordTick(startBeat);
       _playMetronomeClick(accent: true);
       _triggerBeatPulse();
       _metronomeTimer = Timer.periodic(_beatInterval, (_) => _onBeatTick());
@@ -455,6 +513,8 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
         _consecutiveFailures = 0;
         _detectedThisMeasure = false;
         _perfectThisMeasure = false;
+        _onTimeThisMeasure = false;
+        _lastTickAt = null;
         _successGlow = false;
         _showConfetti = false;
         _feedback = _matcher.idleFeedback(_chordA);
@@ -485,130 +545,121 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
         ],
       ),
       body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final narrow = constraints.maxWidth < 380;
-                    final chordA = _ChordDropdown(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _ChordDropdown(
                       label: 'אקורד א\'',
                       value: _chordA,
                       chords: widget.catalog.chords,
                       enabled: !_isRunning && !_busy,
-                      showFretboard: !_isRunning,
+                      showFretboard: false,
                       onChanged: (chord) {
                         if (chord != null) setState(() => _chordA = chord);
                       },
-                    );
-                    final chordB = _ChordDropdown(
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ChordDropdown(
                       label: 'אקורד ב\'',
                       value: _chordB,
                       chords: widget.catalog.chords,
                       enabled: !_isRunning && !_busy,
-                      showFretboard: !_isRunning,
+                      showFretboard: false,
                       onChanged: (chord) {
                         if (chord != null) setState(() => _chordB = chord);
                       },
-                    );
-
-                    if (narrow) {
-                      return Column(
-                        children: [
-                          chordA,
-                          const SizedBox(height: 12),
-                          chordB,
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: chordA),
-                        const SizedBox(width: 12),
-                        Expanded(child: chordB),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-                _BpmSpeedometer(
-                  bpm: _bpm,
-                  minBpm: _minBpm,
-                  maxBpm: _maxBpm,
-                  enabled: !_isRunning && !_busy,
-                  onChanged: (value) => setState(() => _bpm = value),
-                  onStep: _changeBpm,
-                ),
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('האצה הדרגתית'),
-                  subtitle: const Text(
-                    'מעלה 5 BPM אחרי 2 מעברים מושלמים ברצף',
-                    style: TextStyle(color: AppColors.textMuted),
-                  ),
-                  value: _gradualSpeedUp,
-                  onChanged: _isRunning
-                      ? null
-                      : (value) => setState(() => _gradualSpeedUp = value),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  secondary: Icon(
-                    _metronomeSound
-                        ? Icons.volume_up_rounded
-                        : Icons.volume_off_rounded,
-                    color: _metronomeSound
-                        ? AppColors.turquoise
-                        : AppColors.textMuted,
-                  ),
-                  title: const Text('סאונד מטרונום 🔊'),
-                  subtitle: const Text(
-                    'קליק קצר בכל פעימה',
-                    style: TextStyle(color: AppColors.textMuted),
-                  ),
-                  value: _metronomeSound,
-                  onChanged: (value) => setState(() => _metronomeSound = value),
-                ),
-                const SizedBox(height: 8),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _toggleTraining,
-                  icon: Icon(
-                    _isRunning ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                  ),
-                  label: Text(
-                    _busy
-                        ? 'אנא המתן…'
-                        : _isRunning
-                            ? 'עצור'
-                            : 'התחל אימון',
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _isRunning
-                        ? AppColors.error
-                        : AppColors.turquoise,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: AppColors.error),
+                    ),
                   ),
                 ],
-                const SizedBox(height: 20),
-                _OrganicMetronome(
-                  currentBeat: _currentBeat,
-                  isRunning: _isRunning,
-                  pulseAnimation: _pulseController,
+              ),
+              const SizedBox(height: 6),
+              _BpmSpeedometer(
+                bpm: _bpm,
+                minBpm: _minBpm,
+                maxBpm: _maxBpm,
+                enabled: !_isRunning && !_busy,
+                compact: true,
+                onChanged: (value) => setState(() => _bpm = value),
+                onStep: _changeBpm,
+              ),
+              SwitchListTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('האצה הדרגתית', style: TextStyle(fontSize: 14)),
+                subtitle: const Text(
+                  '5 BPM אחרי 2 מעברים עם תזמון ואקורד נכונים',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
-                const SizedBox(height: 16),
-                _ChordCardsDisplay(
+                value: _gradualSpeedUp,
+                onChanged: _isRunning
+                    ? null
+                    : (value) => setState(() => _gradualSpeedUp = value),
+              ),
+              SwitchListTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  _metronomeSound
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_off_rounded,
+                  color: _metronomeSound
+                      ? AppColors.turquoise
+                      : AppColors.textMuted,
+                  size: 22,
+                ),
+                title: const Text('סאונד מטרונום', style: TextStyle(fontSize: 14)),
+                value: _metronomeSound,
+                onChanged: (value) => setState(() => _metronomeSound = value),
+              ),
+              FilledButton.icon(
+                onPressed: _busy ? null : _toggleTraining,
+                icon: Icon(
+                  _isRunning ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                ),
+                label: Text(
+                  _busy
+                      ? 'אנא המתן…'
+                      : _isRunning
+                          ? 'עצור'
+                          : 'התחל אימון',
+                ),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: _isRunning
+                      ? AppColors.error
+                      : AppColors.turquoise,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: AppColors.error, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              const SizedBox(height: 6),
+              _OrganicMetronome(
+                currentBeat: _currentBeat,
+                isRunning: _isRunning,
+                pulseAnimation: _pulseController,
+                compact: true,
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: _ChordCardsDisplay(
                   currentChord: _currentTarget,
                   nextChord: _nextChord,
                   isRunning: _isRunning,
@@ -616,20 +667,22 @@ class _ChordTransitionsScreenState extends State<ChordTransitionsScreen>
                   showConfetti: _showConfetti,
                   confettiTick: _confettiTick,
                 ),
-                const SizedBox(height: 12),
-                if (_measureFeedback != null)
-                  _MeasureFeedbackBanner(message: _measureFeedback!),
-                const SizedBox(height: 12),
-                _DetectionBanner(
-                  summary: feedback?.summary ?? 'מוכן לאימון',
-                  matchStatus: matchStatus,
-                  inputLevel: feedback?.inputLevel ?? 0,
-                  listening: _isRunning,
-                ),
+              ),
+              if (_measureFeedback != null) ...[
+                const SizedBox(height: 6),
+                _MeasureFeedbackBanner(message: _measureFeedback!),
               ],
-            ),
+              const SizedBox(height: 6),
+              _DetectionBanner(
+                summary: feedback?.summary ?? 'מוכן לאימון',
+                matchStatus: matchStatus,
+                inputLevel: feedback?.inputLevel ?? 0,
+                listening: _isRunning,
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 }
@@ -714,6 +767,7 @@ class _BpmSpeedometer extends StatelessWidget {
     required this.enabled,
     required this.onChanged,
     required this.onStep,
+    this.compact = false,
   });
 
   final int bpm;
@@ -722,16 +776,26 @@ class _BpmSpeedometer extends StatelessWidget {
   final bool enabled;
   final ValueChanged<int> onChanged;
   final void Function(int delta) onStep;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final gaugeHeight = compact ? 72.0 : 150.0;
+    final bpmFont = compact ? 28.0 : 40.0;
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 10 : 16,
+          compact ? 8 : 20,
+          compact ? 10 : 16,
+          compact ? 4 : 16,
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: 150,
+              height: gaugeHeight,
               width: double.infinity,
               child: CustomPaint(
                 painter: _SpeedometerPainter(
@@ -741,24 +805,25 @@ class _BpmSpeedometer extends StatelessWidget {
                 ),
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 36),
+                    padding: EdgeInsets.only(top: compact ? 18 : 36),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           '$bpm',
-                          style: const TextStyle(
-                            fontSize: 40,
+                          style: TextStyle(
+                            fontSize: bpmFont,
                             fontWeight: FontWeight.bold,
                             color: AppColors.amberBright,
                             height: 1,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'BPM',
                           style: TextStyle(
                             color: AppColors.textMuted,
                             fontWeight: FontWeight.w600,
+                            fontSize: compact ? 11 : 14,
                           ),
                         ),
                       ],
@@ -767,7 +832,6 @@ class _BpmSpeedometer extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -776,7 +840,7 @@ class _BpmSpeedometer extends StatelessWidget {
                   enabled: enabled && bpm > minBpm,
                   onTap: () => onStep(-5),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: SliderTheme(
                     data: SliderThemeData(
@@ -798,7 +862,7 @@ class _BpmSpeedometer extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 _RoundIconButton(
                   icon: Icons.add,
                   enabled: enabled && bpm < maxBpm,
@@ -931,131 +995,156 @@ class _OrganicMetronome extends StatelessWidget {
     required this.currentBeat,
     required this.isRunning,
     required this.pulseAnimation,
+    this.compact = false,
   });
 
   final int currentBeat;
   final bool isRunning;
   final AnimationController pulseAnimation;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        child: Column(
-          children: [
-            Text(
-              isRunning ? 'פעימה $currentBeat מתוך 4' : 'מטרונום',
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontWeight: FontWeight.w600,
+    final circleSize = compact ? 48.0 : 88.0;
+    final beatDots = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(4, (index) {
+        final beat = index + 1;
+        final active = isRunning && beat == currentBeat;
+        final isDownbeat = beat == 1;
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 6),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            width: active ? (compact ? 11.0 : 14.0) : (compact ? 8.0 : 10.0),
+            height: active ? (compact ? 11.0 : 14.0) : (compact ? 8.0 : 10.0),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active
+                  ? (isDownbeat
+                      ? AppColors.amberBright
+                      : AppColors.turquoise)
+                  : AppColors.textMuted.withValues(alpha: 0.25),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: (isDownbeat
+                                ? AppColors.amber
+                                : AppColors.turquoise)
+                            .withValues(alpha: 0.6),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+        );
+      }),
+    );
+
+    final pulse = AnimatedBuilder(
+      animation: pulseAnimation,
+      builder: (context, child) {
+        final t = Curves.easeOut.transform(pulseAnimation.value);
+        final scale = 1.0 + (1.0 - t) * (compact ? 0.22 : 0.35);
+        final glowOpacity = (1.0 - t) * 0.55;
+
+        return Container(
+          width: circleSize,
+          height: circleSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: isRunning
+                ? [
+                    BoxShadow(
+                      color: AppColors.turquoise.withValues(alpha: glowOpacity),
+                      blurRadius: compact ? 16 : 28,
+                      spreadRadius: (compact ? 3 : 6) * (1.0 - t),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Transform.scale(
+            scale: isRunning ? scale : 1.0,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: isRunning
+                      ? [
+                          AppColors.turquoise,
+                          AppColors.turquoiseDim,
+                        ]
+                      : [
+                          AppColors.surface,
+                          AppColors.surfaceElevated,
+                        ],
+                ),
+                border: Border.all(
+                  color: isRunning
+                      ? AppColors.turquoise
+                      : AppColors.textMuted.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                isRunning ? '$currentBeat' : '♩',
+                style: TextStyle(
+                  fontSize: compact ? 20 : 32,
+                  fontWeight: FontWeight.bold,
+                  color: isRunning
+                      ? const Color(0xFF042F2E)
+                      : AppColors.textMuted,
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            AnimatedBuilder(
-              animation: pulseAnimation,
-              builder: (context, child) {
-                final t = Curves.easeOut.transform(pulseAnimation.value);
-                final scale = 1.0 + (1.0 - t) * 0.35;
-                final glowOpacity = (1.0 - t) * 0.55;
+          ),
+        );
+      },
+    );
 
-                return Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: isRunning
-                        ? [
-                            BoxShadow(
-                              color: AppColors.turquoise
-                                  .withValues(alpha: glowOpacity),
-                              blurRadius: 28,
-                              spreadRadius: 6 * (1.0 - t),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Transform.scale(
-                    scale: isRunning ? scale : 1.0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: isRunning
-                              ? [
-                                  AppColors.turquoise,
-                                  AppColors.turquoiseDim,
-                                ]
-                              : [
-                                  AppColors.surface,
-                                  AppColors.surfaceElevated,
-                                ],
-                        ),
-                        border: Border.all(
-                          color: isRunning
-                              ? AppColors.turquoise
-                              : AppColors.textMuted
-                                  .withValues(alpha: 0.3),
-                          width: 2,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        isRunning ? '$currentBeat' : '♩',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: isRunning
-                              ? const Color(0xFF042F2E)
-                              : AppColors.textMuted,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(4, (index) {
-                final beat = index + 1;
-                final active = isRunning && beat == currentBeat;
-                final isDownbeat = beat == 1;
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    width: active ? 14 : 10,
-                    height: active ? 14 : 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: active
-                          ? (isDownbeat
-                              ? AppColors.amberBright
-                              : AppColors.turquoise)
-                          : AppColors.textMuted.withValues(alpha: 0.25),
-                      boxShadow: active
-                          ? [
-                              BoxShadow(
-                                color: (isDownbeat
-                                        ? AppColors.amber
-                                        : AppColors.turquoise)
-                                    .withValues(alpha: 0.6),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ],
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: compact ? 8 : 20,
+          horizontal: compact ? 12 : 16,
         ),
+        child: compact
+            ? Row(
+                children: [
+                  Text(
+                    isRunning ? 'פעימה $currentBeat/4' : 'מטרונום',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const Spacer(),
+                  beatDots,
+                  const SizedBox(width: 12),
+                  pulse,
+                ],
+              )
+            : Column(
+                children: [
+                  Text(
+                    isRunning ? 'פעימה $currentBeat מתוך 4' : 'מטרונום',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  pulse,
+                  const SizedBox(height: 18),
+                  beatDots,
+                ],
+              ),
       ),
     );
   }
@@ -1081,167 +1170,131 @@ class _ChordCardsDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentAccent = chordAccentColor(currentChord);
-    final nextAccent = chordAccentColor(nextChord);
 
     return Stack(
       clipBehavior: Clip.none,
       alignment: Alignment.topCenter,
       children: [
-        Column(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: successGlow
-                    ? [
-                        BoxShadow(
-                          color: AppColors.success.withValues(alpha: 0.75),
-                          blurRadius: 28,
-                          spreadRadius: 4,
-                        ),
-                        BoxShadow(
-                          color: AppColors.amberBright
-                              .withValues(alpha: 0.45),
-                          blurRadius: 18,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-              ),
-              child: Card(
-                margin: EdgeInsets.zero,
-                color: AppColors.surfaceElevated,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  side: BorderSide(
-                    color: successGlow
-                        ? AppColors.success
-                        : AppColors.turquoise.withValues(alpha: 0.45),
-                    width: successGlow ? 2.5 : 1.5,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 28,
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        isRunning ? 'נגן עכשיו' : 'אקורד יעד',
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 420),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) {
-                          final slide = Tween<Offset>(
-                            begin: const Offset(0, 0.35),
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: slide,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Text(
-                          currentChord.displayName,
-                          key: ValueKey(currentChord.id),
-                          style: const TextStyle(
-                            fontSize: 52,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      ChordFretboardFrame(
-                        chord: currentChord,
-                        accent: currentAccent,
-                      ),
-                    ],
-                  ),
-                ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: successGlow
+                ? [
+                    BoxShadow(
+                      color: AppColors.success.withValues(alpha: 0.75),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: Card(
+            margin: EdgeInsets.zero,
+            color: AppColors.surfaceElevated,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: successGlow
+                    ? AppColors.success
+                    : AppColors.turquoise.withValues(alpha: 0.45),
+                width: successGlow ? 2.5 : 1.5,
               ),
             ),
-            if (isRunning) ...[
-              const SizedBox(height: 12),
-              Card(
-                color: AppColors.surface.withValues(alpha: 0.85),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: AppColors.amber.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 20,
-                            color: AppColors.amber.withValues(alpha: 0.9),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: AnimatedSwitcher(
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isRunning ? 'נגן עכשיו' : 'אקורד יעד',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            AnimatedSwitcher(
                               duration: const Duration(milliseconds: 350),
                               child: Text(
+                                currentChord.displayName,
+                                key: ValueKey(currentChord.id),
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isRunning)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.amber.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.amber.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
+                                color: AppColors.amber.withValues(alpha: 0.9),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
                                 'הבא: ${nextChord.displayName}',
-                                key: ValueKey(nextChord.id),
-                                textAlign: TextAlign.center,
-                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.amber.withValues(alpha: 0.95),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ChordFretboardFrame(
-                        chord: nextChord,
-                        accent: nextAccent,
-                      ),
+                        ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ChordFretboardFrame(
+                      chord: currentChord,
+                      accent: currentAccent,
+                      borderRadius: 12,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ],
+            ),
+          ),
         ),
         if (showConfetti)
           Positioned(
-            top: 20,
+            top: 12,
             child: _ConfettiBurst(key: ValueKey(confettiTick)),
           ),
       ],
@@ -1382,12 +1435,12 @@ class _MeasureFeedbackBanner extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
       decoration: BoxDecoration(
         color: isSuccess
             ? AppColors.success.withValues(alpha: 0.15)
             : AppColors.amber.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSuccess ? AppColors.success : AppColors.amber,
           width: 1.5,
@@ -1407,7 +1460,7 @@ class _MeasureFeedbackBanner extends StatelessWidget {
         style: TextStyle(
           color: isSuccess ? AppColors.success : AppColors.amberBright,
           fontWeight: FontWeight.w700,
-          fontSize: 17,
+          fontSize: 15,
         ),
       ),
     );
@@ -1433,30 +1486,33 @@ class _DetectionBanner extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: colors.background,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.border, width: 1.5),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             summary,
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: colors.text,
               fontWeight: FontWeight.w600,
-              fontSize: 16,
+              fontSize: 14,
             ),
           ),
           if (listening) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: inputLevel.clamp(0.0, 1.0),
-                minHeight: 6,
+                minHeight: 5,
                 backgroundColor: Colors.black26,
                 color: AppColors.turquoise,
               ),

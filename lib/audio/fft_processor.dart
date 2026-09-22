@@ -76,8 +76,9 @@ class TargetFrequencyProfile {
     List<double> magnitudes,
     int fftSize,
     double sampleRate, {
-    double searchCents = 80,
+    double? searchCents,
   }) {
+    final cents = searchCents ?? _defaultSearchCents;
     var peak = 0.0;
     for (final harmonic in _pitchSearchHarmonics()) {
       final harmonicHz = fundamentalHz * harmonic;
@@ -87,7 +88,7 @@ class TargetFrequencyProfile {
       final centerBin = hzToBin(harmonicHz, fftSize, sampleRate);
       final halfWidth = _halfWidthBinsForCents(
         harmonicHz,
-        searchCents,
+        cents,
         fftSize,
         sampleRate,
       );
@@ -106,8 +107,9 @@ class TargetFrequencyProfile {
     List<double> magnitudes,
     int fftSize,
     double sampleRate, {
-    double searchCents = 80,
+    double? searchCents,
   }) {
+    final cents = searchCents ?? _defaultSearchCents;
     var bestEnergy = 0.0;
     double? bestHz;
     for (final harmonic in _pitchSearchHarmonics()) {
@@ -118,7 +120,7 @@ class TargetFrequencyProfile {
       final centerBin = hzToBin(harmonicHz, fftSize, sampleRate);
       final halfWidth = _halfWidthBinsForCents(
         harmonicHz,
-        searchCents,
+        cents,
         fftSize,
         sampleRate,
       );
@@ -191,5 +193,12 @@ class TargetFrequencyProfile {
       yield 2;
       yield 3;
     }
+  }
+
+  /// Wider window on bass notes so ±1 FFT bin still counts as "near".
+  double get _defaultSearchCents {
+    if (fundamentalHz < 100) return 150;
+    if (fundamentalHz < 140) return 110;
+    return 80;
   }
 }

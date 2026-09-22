@@ -24,6 +24,7 @@ class ChordNote {
     required this.fret,
     required this.noteName,
     required this.midi,
+    this.finger,
   });
 
   /// String number: 6 = low E, 1 = high E.
@@ -32,14 +33,48 @@ class ChordNote {
   final String noteName;
   final int midi;
 
+  /// Fretting finger: 1=index, 2=middle, 3=ring, 4=pinky. Null for open.
+  final int? finger;
+
   factory ChordNote.fromJson(Map<String, dynamic> json) {
     return ChordNote(
       string: json['string'] as int,
       fret: json['fret'] as int,
       noteName: json['noteName'] as String,
       midi: json['midi'] as int,
+      finger: (json['finger'] as num?)?.toInt(),
     );
   }
+}
+
+/// Difficulty / technique labels used across library + practice filters.
+class ChordDifficultyLevels {
+  ChordDifficultyLevels._();
+
+  static const int min = 1;
+  static const int max = 5;
+
+  static const Map<int, String> shortLabels = {
+    1: 'רמה 1',
+    2: 'רמה 2',
+    3: 'רמה 3',
+    4: 'רמה 4',
+    5: 'רמה 5',
+  };
+
+  static const Map<int, String> categories = {
+    1: 'אקורדים פתוחים בסיסיים',
+    2: 'פתוחים מתקדמים ושביעיות',
+    3: 'אקורדי בארה בסיסיים',
+    4: 'אקורדי בארה מתקדמים',
+    5: "פאוור צ'ורדס",
+  };
+
+  static String labelFor(int difficulty) =>
+      shortLabels[difficulty] ?? 'רמה $difficulty';
+
+  static String categoryFor(int difficulty) =>
+      categories[difficulty] ?? 'כללי';
 }
 
 class ChordDefinition {
@@ -48,6 +83,8 @@ class ChordDefinition {
     required this.displayName,
     required this.fingering,
     required this.notes,
+    this.difficulty = 1,
+    this.category = 'אקורדים פתוחים בסיסיים',
   });
 
   final String id;
@@ -57,7 +94,14 @@ class ChordDefinition {
   final String fingering;
   final List<ChordNote> notes;
 
+  /// Practice level 1–5.
+  final int difficulty;
+
+  /// Technique / style category (Hebrew).
+  final String category;
+
   factory ChordDefinition.fromJson(Map<String, dynamic> json) {
+    final difficulty = (json['difficulty'] as num?)?.toInt() ?? 1;
     return ChordDefinition(
       id: json['id'] as String,
       displayName: json['displayName'] as String,
@@ -65,6 +109,9 @@ class ChordDefinition {
       notes: (json['notes'] as List<dynamic>)
           .map((e) => ChordNote.fromJson(e as Map<String, dynamic>))
           .toList(),
+      difficulty: difficulty.clamp(ChordDifficultyLevels.min, ChordDifficultyLevels.max),
+      category: (json['category'] as String?) ??
+          ChordDifficultyLevels.categoryFor(difficulty),
     );
   }
 
@@ -85,6 +132,15 @@ class ChordDefinition {
       return true;
     }
     return fingering[index].toLowerCase() == 'x';
+  }
+
+  /// First absolute fret shown on the 4-fret diagram (1 = nut visible).
+  int get diagramBaseFret {
+    final fretted = notes.where((n) => n.fret > 0).map((n) => n.fret);
+    if (fretted.isEmpty) return 1;
+    final maxFret = fretted.reduce((a, b) => a > b ? a : b);
+    if (maxFret <= 4) return 1;
+    return maxFret - 3;
   }
 }
 
@@ -119,5 +175,22 @@ class ChordCatalog {
       }
     }
     return null;
+  }
+
+  List<ChordDefinition> chordsForDifficulty(int difficulty) {
+    final list = chords.where((c) => c.difficulty == difficulty).toList();
+    list.sort((a, b) => a.displayName.compareTo(b.displayName));
+    return list;
+  }
+
+  /// All chords sorted by difficulty then name.
+  List<ChordDefinition> get chordsByDifficultyThenName {
+    final list = [...chords];
+    list.sort((a, b) {
+      final byDiff = a.difficulty.compareTo(b.difficulty);
+      if (byDiff != 0) return byDiff;
+      return a.displayName.compareTo(b.displayName);
+    });
+    return list;
   }
 }

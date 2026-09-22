@@ -16,7 +16,7 @@ dependencies:
   fftea: ^1.5.0+1
   permission_handler: ^11.4.0
   audioplayers: ^6.5.0
-
+  path_provider: ^2.1.6
 dev_dependencies:
   flutter_test:
     sdk: flutter

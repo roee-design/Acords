@@ -234,8 +234,8 @@ class _TunerScreenState extends State<TunerScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -244,185 +244,250 @@ class _TunerScreenState extends State<TunerScreen> {
                     ? 'מצב אוטו מזהה רק מיתרים פתוחים — או בחרו מיתר ספציפי'
                     : 'נגנו את המיתר שנבחר פתוח — הסטייה נמדדת מול היעד שלו',
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textMuted,
-                  fontSize: 14,
+                  fontSize: 12,
+                  height: 1.3,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 6),
               _StringPicker(
                 strings: widget.catalog.strings,
                 selectedString: _selectedString,
                 onSelected: _selectString,
+                compact: true,
               ),
-              const SizedBox(height: 20),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceElevated,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: inTune
-                        ? AppColors.success
-                        : AppColors.turquoise.withValues(alpha: 0.4),
-                    width: inTune ? 2.5 : 1.5,
+              const SizedBox(height: 6),
+              Expanded(
+                flex: 2,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 14,
                   ),
-                  boxShadow: inTune
-                      ? [
-                          BoxShadow(
-                            color: AppColors.success.withValues(alpha: 0.35),
-                            blurRadius: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: inTune
+                          ? AppColors.success
+                          : AppColors.turquoise.withValues(alpha: 0.4),
+                      width: inTune ? 2.5 : 1.5,
+                    ),
+                    boxShadow: inTune
+                        ? [
+                            BoxShadow(
+                              color:
+                                  AppColors.success.withValues(alpha: 0.35),
+                              blurRadius: 14,
+                            ),
+                          ]
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.28),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _headlineCaption,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
                           ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _headlineNote,
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: inTune
+                                ? AppColors.success
+                                : AppColors.textPrimary,
+                            height: 1,
+                          ),
+                        ),
+                        if (selectedTuning != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'מיתר ${selectedTuning.index} · ${stringLabel(selectedTuning.index)}',
+                            style: const TextStyle(
+                              color: AppColors.turquoise,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ] else if (_reading.closestStringLabel != null &&
+                            !_reading.awaitingOpenString) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'מיתר ${_reading.closestStringNumber} · ${_reading.closestStringLabel}',
+                            style: const TextStyle(
+                              color: AppColors.turquoise,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      _headlineCaption,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
+                        if (_reading.frequencyHz != null && active) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_reading.frequencyHz!.toStringAsFixed(1)} Hz',
+                            style: TextStyle(
+                              color: AppColors.textMuted
+                                  .withValues(alpha: 0.8),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _headlineNote,
-                      style: TextStyle(
-                        fontSize: 56,
-                        fontWeight: FontWeight.bold,
-                        color: inTune
-                            ? AppColors.success
-                            : AppColors.textPrimary,
-                        height: 1,
-                      ),
-                    ),
-                    if (selectedTuning != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'מיתר ${selectedTuning.index} · ${stringLabel(selectedTuning.index)}',
-                        style: const TextStyle(
-                          color: AppColors.turquoise,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ] else if (_reading.closestStringLabel != null &&
-                        !_reading.awaitingOpenString) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'מיתר ${_reading.closestStringNumber} · ${_reading.closestStringLabel}',
-                        style: const TextStyle(
-                          color: AppColors.turquoise,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    if (_reading.frequencyHz != null && active) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '${_reading.frequencyHz!.toStringAsFixed(1)} Hz',
-                        style: TextStyle(
-                          color: AppColors.textMuted.withValues(alpha: 0.8),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              CentsTunerGauge(
-                centsOffset: active ? cents : null,
-                active: active,
-                height: 170,
-              ),
-              const SizedBox(height: 14),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: tipBorderColor),
-                ),
-                child: Text(
-                  _directionLabel,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: inTune
-                        ? AppColors.success
-                        : AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _busy || !widget.isActive ? null : _toggle,
-                icon: Icon(
-                  _listening ? Icons.stop_rounded : Icons.mic_rounded,
-                ),
-                label: Text(
-                  _busy
-                      ? 'אנא המתן…'
-                      : _listening
-                          ? 'עצור טיונר'
-                          : 'התחל טיונר',
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor:
-                      _listening ? AppColors.error : AppColors.turquoise,
-                  foregroundColor:
-                      _listening ? Colors.white : AppColors.onPrimaryDark,
+              const SizedBox(height: 6),
+              Expanded(
+                flex: 5,
+                child: CentsTunerGauge(
+                  centsOffset: active ? cents : null,
+                  active: active,
+                  height: 160,
+                  compact: true,
                 ),
               ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: AppColors.error),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              if (_listening) ...[
-                const SizedBox(height: 14),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: _reading.inputLevel.clamp(0.0, 1.0),
-                    minHeight: 6,
-                    backgroundColor: Colors.black26,
-                    color: AppColors.turquoise,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: AppTheme.cardDecoration(
-                  borderColor: AppColors.textMuted.withValues(alpha: 0.2),
-                ),
-                child: Text(
-                  _selectedString == null
-                      ? 'טיפ: במצב אוטו הטיונר מזהה רק את 6 המיתרים הפתוחים. נגנו מיתר אחד פתוח בכל פעם. סטייה עד 5 סנט נחשבת מכוונת.'
-                      : 'טיפ: נגנו רק את מיתר ${_selectedString!} פתוח (בלי אצבע על סריג). סטייה עד 5 סנט נחשבת מכוונת.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+              const SizedBox(height: 6),
+              Expanded(
+                flex: 2,
+                child: LayoutBuilder(
+                  builder: (context, bottomConstraints) {
+                    return FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.bottomCenter,
+                      child: SizedBox(
+                        width: bottomConstraints.maxWidth,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: tipBorderColor),
+                              ),
+                              child: Text(
+                                _directionLabel,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: inTune
+                                      ? AppColors.success
+                                      : AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            FilledButton.icon(
+                              onPressed: _busy || !widget.isActive
+                                  ? null
+                                  : _toggle,
+                              icon: Icon(
+                                _listening
+                                    ? Icons.stop_rounded
+                                    : Icons.mic_rounded,
+                              ),
+                              label: Text(
+                                _busy
+                                    ? 'אנא המתן…'
+                                    : _listening
+                                        ? 'עצור טיונר'
+                                        : 'התחל טיונר',
+                              ),
+                              style: FilledButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                backgroundColor: _listening
+                                    ? AppColors.error
+                                    : AppColors.turquoise,
+                                foregroundColor: _listening
+                                    ? Colors.white
+                                    : AppColors.onPrimaryDark,
+                              ),
+                            ),
+                            if (_errorMessage != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: AppColors.error,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            if (_listening) ...[
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value:
+                                      _reading.inputLevel.clamp(0.0, 1.0),
+                                  minHeight: 4,
+                                  backgroundColor: Colors.black26,
+                                  color: AppColors.turquoise,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              decoration: AppTheme.cardDecoration(
+                                borderColor: AppColors.textMuted
+                                    .withValues(alpha: 0.2),
+                              ),
+                              child: Text(
+                                _selectedString == null
+                                    ? 'טיפ: במצב אוטו מזהים רק 6 מיתרים פתוחים. סטייה עד 5 סנט = מכוון.'
+                                    : 'טיפ: נגנו מיתר ${_selectedString!} פתוח בלבד. סטייה עד 5 סנט = מכוון.',
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -438,11 +503,13 @@ class _StringPicker extends StatelessWidget {
     required this.strings,
     required this.selectedString,
     required this.onSelected,
+    this.compact = false,
   });
 
   final List<GuitarStringTuning> strings;
   final int? selectedString;
   final ValueChanged<int?> onSelected;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -453,30 +520,32 @@ class _StringPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'מיתר לכוונון',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.textMuted,
             fontWeight: FontWeight.w600,
-            fontSize: 13,
+            fontSize: compact ? 12 : 13,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: compact ? 4 : 10),
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
+          spacing: compact ? 5 : 8,
+          runSpacing: compact ? 5 : 8,
           children: [
             _StringChip(
               label: 'אוטו',
               selected: selectedString == null,
+              compact: compact,
               onTap: () => onSelected(null),
             ),
             for (final s in ordered)
               _StringChip(
                 label: '${s.index} · ${s.name}',
                 selected: selectedString == s.index,
+                compact: compact,
                 onTap: () => onSelected(s.index),
               ),
           ],
@@ -491,11 +560,13 @@ class _StringChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.compact = false,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -503,14 +574,17 @@ class _StringChip extends StatelessWidget {
       color: selected
           ? AppColors.turquoise
           : AppColors.surfaceElevated,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(compact ? 10 : 12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(compact ? 10 : 12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 10 : 14,
+            vertical: compact ? 7 : 10,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(compact ? 10 : 12),
             border: Border.all(
               color: selected
                   ? AppColors.turquoise
@@ -524,7 +598,7 @@ class _StringChip extends StatelessWidget {
                   ? AppColors.onPrimaryDark
                   : AppColors.textPrimary,
               fontWeight: FontWeight.w700,
-              fontSize: 13,
+              fontSize: compact ? 12 : 13,
             ),
           ),
         ),
