@@ -1,0 +1,378 @@
+{
+  "songs": [
+    {
+      "id": "amazing_grace",
+      "title": "Amazing Grace",
+      "artist": "John Newton (1779)",
+      "difficulty": 1,
+      "bpm": 72,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "ballad_down",
+        "name": "בלדה — בעיקר למטה",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ - ↓ ↑ ↓ -"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "Amazing grace, " },
+            { "chordId": "c_major", "lyrics": "how sweet the " },
+            { "chordId": "g_major", "lyrics": "sound" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "That saved a " },
+            { "chordId": "d_major", "lyrics": "wretch like " },
+            { "chordId": "g_major", "lyrics": "me" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "I once was " },
+            { "chordId": "c_major", "lyrics": "lost, but " },
+            { "chordId": "g_major", "lyrics": "now am found" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "Was blind, but " },
+            { "chordId": "d_major", "lyrics": "now I " },
+            { "chordId": "g_major", "lyrics": "see" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hine_ma_tov",
+      "title": "הנה מה טוב",
+      "artist": "תהילים קל״ג · מסורת",
+      "difficulty": 1,
+      "bpm": 88,
+      "instrumental": false,
+      "rtl": true,
+      "publicDomain": true,
+      "pattern": {
+        "id": "simple_down_up",
+        "name": "למטה־למעלה פשוט",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ - ↑ ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "e_minor", "lyrics": "הנה מה טוב " },
+            { "chordId": "a_minor", "lyrics": "ומה נעים" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "d_major", "lyrics": "שבת אחים " },
+            { "chordId": "g_major", "lyrics": "גם יחד" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "e_minor", "lyrics": "הנה מה טוב " },
+            { "chordId": "a_minor", "lyrics": "ומה נעים" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "d_major", "lyrics": "שבת אחים " },
+            { "chordId": "e_minor", "lyrics": "גם יחד" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "yonatan_katan",
+      "title": "יונתן הקטן",
+      "artist": "שיר ילדים מסורתי",
+      "difficulty": 1,
+      "bpm": 100,
+      "instrumental": false,
+      "rtl": true,
+      "publicDomain": true,
+      "pattern": {
+        "id": "kids_down4",
+        "name": "ארבע מכות למטה",
+        "beatsPerBar": 4,
+        "subdivision": 1,
+        "strokes": "↓ ↓ ↓ ↓"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "c_major", "lyrics": "יונתן הקטן " },
+            { "chordId": "g_major", "lyrics": "רץ בבוקר אל הגן" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "הוא טיפס על העץ " },
+            { "chordId": "f_major", "lyrics": "אפרוחים חיפש" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "c_major", "lyrics": "אוי מה קרה " },
+            { "chordId": "g_major", "lyrics": "יונתן נפל" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "f_major", "lyrics": "ושבר " },
+            { "chordId": "c_major", "lyrics": "את רגלו" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shalom_aleichem",
+      "title": "שלום עליכם",
+      "artist": "פיוט מסורתי לשבת",
+      "difficulty": 2,
+      "bpm": 76,
+      "instrumental": false,
+      "rtl": true,
+      "publicDomain": true,
+      "pattern": {
+        "id": "gentle_8",
+        "name": "שמיניות רכות",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ - ↑ ↓ -"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "שלום עליכם " },
+            { "chordId": "d_minor", "lyrics": "מלאכי השרת" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "מלאכי עליון" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "c_major", "lyrics": "ממלך מלכי " },
+            { "chordId": "f_major", "lyrics": "המלכים" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "e_major", "lyrics": "הקדוש " },
+            { "chordId": "a_minor", "lyrics": "ברוך הוא" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hatikvah",
+      "title": "התקווה",
+      "artist": "נפתלי הרץ אימבר · מסורת",
+      "difficulty": 2,
+      "bpm": 70,
+      "instrumental": false,
+      "rtl": true,
+      "publicDomain": true,
+      "pattern": {
+        "id": "anthem_down",
+        "name": "המנון — פריטה יציבה",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ - ↓ ↑ ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "d_minor", "lyrics": "כל עוד בלבב " },
+            { "chordId": "a_major", "lyrics": "פנימה" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "d_minor", "lyrics": "נפש יהודי " },
+            { "chordId": "a_major", "lyrics": "הומיה" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "f_major", "lyrics": "ולפאתי מזרח " },
+            { "chordId": "c_major", "lyrics": "קדימה" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "עין לציון " },
+            { "chordId": "d_minor", "lyrics": "צופיה" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scarborough_fair",
+      "title": "Scarborough Fair",
+      "artist": "Traditional English ballad",
+      "difficulty": 2,
+      "bpm": 84,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "folk_arpeggio_feel",
+        "name": "פולק — למטה ולמעלה",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ - ↑ ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "Are you going to " },
+            { "chordId": "g_major", "lyrics": "Scarborough Fair?" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "Parsley, sage, " },
+            { "chordId": "e_major", "lyrics": "rosemary and thyme" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "Remember me to " },
+            { "chordId": "g_major", "lyrics": "one who lives there" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "She once was a " },
+            { "chordId": "e_major", "lyrics": "true love of mine" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "house_rising_sun",
+      "title": "House of the Rising Sun",
+      "artist": "Traditional American folk",
+      "difficulty": 3,
+      "bpm": 78,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "rising_sun_waltzish",
+        "name": "פולק עם השתקה קלה",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ ↓ ✕ ↑ ↓ ↑ ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "There is a house in " },
+            { "chordId": "c_major", "lyrics": "New Orleans" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "d_major", "lyrics": "They call the " },
+            { "chordId": "f_major", "lyrics": "Rising Sun" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "a_minor", "lyrics": "And it's been the ruin of " },
+            { "chordId": "c_major", "lyrics": "many a poor boy" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "e_major", "lyrics": "And God, I know " },
+            { "chordId": "a_minor", "lyrics": "I'm one" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "knockin_heaven",
+      "title": "Knockin' on Heaven's Door",
+      "artist": "Bob Dylan · אימון מנגינה",
+      "difficulty": 1,
+      "bpm": 70,
+      "instrumental": true,
+      "rtl": false,
+      "publicDomain": false,
+      "pattern": {
+        "id": "knockin_down8",
+        "name": "פריטה רגועה",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ - ↓ ↑ ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "" },
+            { "chordId": "d_major", "lyrics": "" },
+            { "chordId": "a_minor", "lyrics": "" },
+            { "chordId": "a_minor", "lyrics": "" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "g_major", "lyrics": "" },
+            { "chordId": "d_major", "lyrics": "" },
+            { "chordId": "c_major", "lyrics": "" },
+            { "chordId": "c_major", "lyrics": "" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "let_it_be",
+      "title": "Let It Be",
+      "artist": "The Beatles · אימון מנגינה",
+      "difficulty": 2,
+      "bpm": 72,
+      "instrumental": true,
+      "rtl": false,
+      "publicDomain": false,
+      "pattern": {
+        "id": "let_it_be_ballad",
+        "name": "בלדה רכה",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ - ↑ ↓ -"
+      },
+      "lines": [
+        {
+          "segments": [
+            { "chordId": "c_major", "lyrics": "" },
+            { "chordId": "g_major", "lyrics": "" },
+            { "chordId": "a_minor", "lyrics": "" },
+            { "chordId": "f_major", "lyrics": "" }
+          ]
+        },
+        {
+          "segments": [
+            { "chordId": "c_major", "lyrics": "" },
+            { "chordId": "g_major", "lyrics": "" },
+            { "chordId": "f_major", "lyrics": "" },
+            { "chordId": "c_major", "lyrics": "" }
+          ]
+        }
+      ]
+    }
+  ]
+}

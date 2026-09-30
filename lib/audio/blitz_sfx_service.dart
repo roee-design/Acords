@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 
-/// Short synthesized SFX for Chord Blitz (countdown, success, streak, game over).
+/// Synthesized SFX for Chord Blitz — countdown, hits, combos, urgency, records.
 class BlitzSfxService {
   BlitzSfxService._();
 
@@ -35,37 +35,62 @@ class BlitzSfxService {
   }
 
   Future<void> playCountdownTick() => _play(_beep(
-        frequencies: const [880],
-        durationMs: 90,
-        gain: 0.28,
+        frequencies: const [988],
+        durationMs: 85,
+        gain: 0.3,
       ));
 
   Future<void> playGo() => _play(_beep(
-        frequencies: const [523.25, 659.25, 783.99],
-        durationMs: 280,
-        gain: 0.32,
-        arpeggioMs: 40,
+        frequencies: const [392, 523.25, 659.25, 783.99],
+        durationMs: 360,
+        gain: 0.36,
+        arpeggioMs: 35,
       ));
 
   Future<void> playSuccess() => _play(_beep(
-        frequencies: const [659.25, 830.61],
-        durationMs: 180,
-        gain: 0.3,
-        arpeggioMs: 45,
+        frequencies: const [523.25, 659.25, 783.99],
+        durationMs: 200,
+        gain: 0.32,
+        arpeggioMs: 28,
       ));
 
+  /// Rising blip as the streak grows (2–4 before the milestone bonus).
+  Future<void> playComboStep(int streak) {
+    final base = 440.0 * pow(2, (streak.clamp(1, 8) - 1) / 12);
+    return _play(_beep(
+      frequencies: [base, base * 1.25],
+      durationMs: 140,
+      gain: 0.28,
+      arpeggioMs: 25,
+    ));
+  }
+
   Future<void> playStreakBonus() => _play(_beep(
-        frequencies: const [523.25, 659.25, 783.99, 1046.5],
-        durationMs: 420,
-        gain: 0.34,
-        arpeggioMs: 55,
+        frequencies: const [523.25, 659.25, 783.99, 1046.5, 1318.5],
+        durationMs: 520,
+        gain: 0.38,
+        arpeggioMs: 48,
+      ));
+
+  /// Soft tick in the last seconds of the round.
+  Future<void> playUrgencyTick({required bool critical}) => _play(_beep(
+        frequencies: critical ? const [1244.5] : const [932.3],
+        durationMs: critical ? 70 : 55,
+        gain: critical ? 0.34 : 0.22,
+      ));
+
+  Future<void> playNewHighScore() => _play(_beep(
+        frequencies: const [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568],
+        durationMs: 900,
+        gain: 0.4,
+        arpeggioMs: 70,
       ));
 
   Future<void> playGameOver() => _play(_beep(
-        frequencies: const [392, 311.13, 246.94],
-        durationMs: 520,
+        frequencies: const [349.23, 293.66, 220],
+        durationMs: 580,
         gain: 0.3,
-        arpeggioMs: 90,
+        arpeggioMs: 100,
       ));
 
   Future<void> _play(Uint8List wav) async {
@@ -108,7 +133,11 @@ class BlitzSfxService {
       for (var i = start; i < totalSamples; i++) {
         final t = (i - start) / _sampleRate;
         final envelope = exp(-3.2 * t);
-        final sample = sin(phase) * envelope * voiceGain;
+        // Light 2nd harmonic for a less "thin beep" character.
+        final sample = (sin(phase) + 0.28 * sin(phase * 2)) *
+            envelope *
+            voiceGain *
+            0.82;
         final mixed = pcm[i] / 32767.0 + sample;
         pcm[i] = (mixed.clamp(-1.0, 1.0) * 32767).round();
         phase += phaseInc;

@@ -5,6 +5,7 @@ import 'app_theme.dart';
 import 'chord_blitz_screen.dart';
 import 'navigation/app_page_route.dart';
 import 'practice_screen.dart';
+import 'strumming_learning_screen.dart';
 import 'widgets/help_sheet.dart';
 
 /// Entry point for choosing a practice mode.
@@ -123,6 +124,22 @@ class HomeScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         AppPageRoute<void>(
                           page: ChordBlitzScreen(catalog: catalog),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _ModeCard(
+                    icon: Icons.back_hand_rounded,
+                    accentColor: const Color(0xFFA78BFA),
+                    title: 'לימוד פריטות',
+                    description:
+                        '6 דפוסים מרכזיים במסלול מודרך: מעברים → קצב → לולאה',
+                    badge: 'חדש',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        AppPageRoute<void>(
+                          page: StrummingLearningScreen(catalog: catalog),
                         ),
                       );
                     },

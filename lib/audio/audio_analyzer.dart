@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -49,10 +50,39 @@ class AudioAnalyzer {
   var _sessionId = 0;
   Future<void>? _operation;
 
+  // --- Strum onset tracking -------------------------------------------------
+  // Short-block RMS envelope of the raw PCM (independent of the FFT window).
+  // A block that jumps well above the recent minimum is a fresh attack
+  // (strum). Fretting an already-ringing string changes its pitch but never
+  // raises the level, so requiring an onset blocks "the chord appeared
+  // without being strummed" false accepts.
+  static const int _onsetBlockMs = 40;
+  static const int _onsetHistoryBlocks = 10; // 400 ms of history
+  static const int _onsetReferenceSkipBlocks = 2; // ignore the newest 80 ms
+  static const double _onsetRatio = 1.8;
+  static const double _onsetMinLevel = 0.012;
+
+  late final int _onsetBlockSamples = (sampleRate * _onsetBlockMs / 1000).round();
+  final List<double> _onsetRmsHistory = <double>[];
+  var _onsetSumSquares = 0.0;
+  var _onsetSampleCount = 0;
+  DateTime? _lastOnsetAt;
+
   Stream<ChordFeedback> get feedbackStream => _feedbackController.stream;
 
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
+
+  /// Time of the most recent detected strum attack since the last
+  /// [resetAnalysisState] (i.e. since the current target chord was set).
+  DateTime? get lastOnsetAt => _lastOnsetAt;
+
+  /// True when a new strum attack was detected within [window].
+  bool hasOnsetWithin(Duration window) {
+    final onset = _lastOnsetAt;
+    if (onset == null) return false;
+    return DateTime.now().difference(onset) <= window;
+  }
 
   /// Nominal FFT frame duration — used by transitions timing compensation.
   double get fftBufferLatencyMs => (fftSize / sampleRate) * 1000.0;
@@ -113,6 +143,9 @@ class AudioAnalyzer {
     _ringBuffer.clear();
     _fftProcessor.reset();
     _lastAnalysisTime = null;
+    // A new target needs a *new* strum; keep the RMS history so an attack
+    // during the grace window is still recognised.
+    _lastOnsetAt = null;
     _ignoreDetectionsUntil = gracePeriod == null
         ? null
         : DateTime.now().add(gracePeriod);
@@ -222,6 +255,7 @@ class AudioAnalyzer {
       }
 
       resetAnalysisState();
+      _resetOnsetTracker();
       _isListening = true;
 
       _pcmSubscription = stream.listen(
@@ -305,6 +339,7 @@ class AudioAnalyzer {
     }
 
     _ringBuffer.writePcm16LeBytes(pcmBytes);
+    _trackOnset(pcmBytes);
 
     final ignoreUntil = _ignoreDetectionsUntil;
     if (ignoreUntil != null) {
@@ -378,6 +413,61 @@ class AudioAnalyzer {
 
     if (!_feedbackController.isClosed) {
       _feedbackController.add(feedback);
+    }
+  }
+
+  void _resetOnsetTracker() {
+    _onsetRmsHistory.clear();
+    _onsetSumSquares = 0;
+    _onsetSampleCount = 0;
+    _lastOnsetAt = null;
+  }
+
+  /// Accumulates PCM into fixed 40 ms blocks and flags an onset when a block's
+  /// RMS jumps ≥ [_onsetRatio]× above the quietest block 80–400 ms earlier.
+  void _trackOnset(List<int> pcmBytes) {
+    for (var i = 0; i + 1 < pcmBytes.length; i += 2) {
+      final unsigned = pcmBytes[i] | (pcmBytes[i + 1] << 8);
+      final signed = unsigned >= 0x8000 ? unsigned - 0x10000 : unsigned;
+      final sample = signed / 32768.0;
+      _onsetSumSquares += sample * sample;
+      _onsetSampleCount++;
+
+      if (_onsetSampleCount >= _onsetBlockSamples) {
+        final rms = sqrt(_onsetSumSquares / _onsetSampleCount);
+        _onsetSumSquares = 0;
+        _onsetSampleCount = 0;
+        _onOnsetBlock(rms);
+      }
+    }
+  }
+
+  void _onOnsetBlock(double rms) {
+    final history = _onsetRmsHistory;
+    final referenceEnd = history.length - _onsetReferenceSkipBlocks;
+    if (referenceEnd >= 1) {
+      var reference = double.infinity;
+      for (var i = 0; i < referenceEnd; i++) {
+        reference = min(reference, history[i]);
+      }
+      if (rms >= _onsetMinLevel && rms >= reference * _onsetRatio) {
+        final now = DateTime.now();
+        final previous = _lastOnsetAt;
+        if (previous == null ||
+            now.difference(previous).inMilliseconds > 200) {
+          // ignore: avoid_print
+          print(
+            '[Acords Audio] onset rms=${rms.toStringAsFixed(4)} '
+            'ref=${reference.toStringAsFixed(4)}',
+          );
+        }
+        _lastOnsetAt = now;
+      }
+    }
+
+    history.add(rms);
+    if (history.length > _onsetHistoryBlocks) {
+      history.removeAt(0);
     }
   }
 }

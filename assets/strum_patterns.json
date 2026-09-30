@@ -1,0 +1,64 @@
+{
+  "patterns": [
+    {
+      "id": "basic_44",
+      "name": "פריטה בסיסית 4/4",
+      "description": "ארבע מכות למטה — הבסיס לכל מתחיל.",
+      "beatsPerBar": 4,
+      "subdivision": 1,
+      "bpm": 72,
+      "practiceChordIds": ["g_major", "c_major", "d_major", "g_major"],
+      "strokes": "↓ ↓ ↓ ↓"
+    },
+    {
+      "id": "pop_rock_8",
+      "name": "פריטת פופ/רוק",
+      "description": "למטה־למעלה קלאסית על שמיניות — השיר הכי שימושי.",
+      "beatsPerBar": 4,
+      "subdivision": 2,
+      "bpm": 90,
+      "practiceChordIds": ["c_major", "g_major", "a_minor", "f_major"],
+      "strokes": "↓ - ↓ ↑ - ↑ ↓ ↑"
+    },
+    {
+      "id": "waltz_34",
+      "name": "ואלס 3/4",
+      "description": "שלוש פעימות לתיבה — תחושת ריקוד עדינה.",
+      "beatsPerBar": 3,
+      "subdivision": 1,
+      "bpm": 84,
+      "practiceChordIds": ["c_major", "a_minor", "f_major", "g_major"],
+      "strokes": "↓ ↓ ↓"
+    },
+    {
+      "id": "island_mute",
+      "name": "פריטת אי / השתקה",
+      "description": "מכות עם ✕ (slap) — קצב חד ומודרני.",
+      "beatsPerBar": 4,
+      "subdivision": 2,
+      "bpm": 96,
+      "practiceChordIds": ["e_minor", "d_major", "e_minor", "d_major"],
+      "strokes": "↓ ↓ ✕ ↑ ↓ ↑ ↓ ↑"
+    },
+    {
+      "id": "ballad_soft",
+      "name": "בלדה רכה",
+      "description": "שמיניות רכות עם השהיות — מתאים לשירי עם.",
+      "beatsPerBar": 4,
+      "subdivision": 2,
+      "bpm": 70,
+      "practiceChordIds": ["g_major", "c_major", "d_major", "g_major"],
+      "strokes": "↓ - ↓ ↑ - ↑ ↓ -"
+    },
+    {
+      "id": "arpeggio_pima",
+      "name": "ארפג׳ו קלאסי (p-i-m-a)",
+      "description": "פריטת מיתרים בודדים באצבעות — p על מיתר 6, i/m/a על 3/2/1.",
+      "beatsPerBar": 4,
+      "subdivision": 4,
+      "bpm": 66,
+      "practiceChordIds": ["c_major", "a_minor", "f_major", "g_major"],
+      "strokes": "p i m a i m a i"
+    }
+  ]
+}

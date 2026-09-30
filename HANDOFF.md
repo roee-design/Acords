@@ -2,9 +2,14 @@
 
 מסמך עבודה שוטף למפתח / AI. **כל שינוי, באג או פיצ'ר מעתה מתועדים כאן בלבד.**
 
-**נתיב הפרויקט:** `c:\Users\noam1\OneDrive\שולחן העבודה\רועי\Acords`
+**נתיב הפרויקט:** `c:\Users\Fisher-home\Desktop\chords`
 
-> **Release נעול:** `HANDOFF_2.md` + `releases/acords_v1.0.0.apk` + `releases/windows.zip` = snapshot רשמי של v1.0.0 (+8). **אין לערוך את `HANDOFF_2.md`.**
+> **Release נעול:** `HANDOFF_2.md` + `releases/acords_v1.0.1.apk` = snapshot רשמי של **v1.0.1 (+1)**. **אין לערוך את `HANDOFF_2.md`.**
+
+### חוקי עבודה (חובה אחרי כל פעולה)
+
+1. בונים **APK דיבאג** → `build/app/outputs/flutter-apk/app-debug.apk` (לא מעתיקים ל־`releases/`).
+2. מעדכנים את **`HANDOFF.md`** בלבד (מצב נוכחי + Build history).
 
 ---
 
@@ -12,17 +17,22 @@
 
 | שדה | ערך |
 |-----|-----|
-| גרסת פיתוח (`pubspec.yaml`) | `1.0.1+1` |
-| Release יציב (נעול) | `1.0.0+8` → `releases/acords_v1.0.0.apk` + `releases/windows.zip` |
-| APK דיבאג | `build/app/outputs/flutter-apk/app-debug.apk` (לא נוגע ב-`releases/`) |
+| גרסת פיתוח (`pubspec.yaml`) | `1.0.2+1` |
+| Release יציב (נעול) | `1.0.1+1` → `releases/acords_v1.0.1.apk` (~48.9MB) — ראו `HANDOFF_2.md` |
+| APK דיבאג | `build/app/outputs/flutter-apk/app-debug.apk` |
+| סביבת עבודה | Flutter 3.47.5 + JDK 17 + Android SDK ב־`Fisher-home\Desktop\chords` (2026-09-25) |
+| סבב נוכחי | ארכיטקטורת שירים/פריטות: טאב «שירים», לימוד פריטות מרכזי, תיקון שמע, ארפג׳ו, תיבות ריקות ל־© |
 
-### כיוון ארכיטקטורה נוכחי (`1.0.1+1`)
+### כיוון ארכיטקטורה נוכחי (`1.0.2+1`)
 
 1. **מעברי אקורדים מוקפאים** — הוסרו ממסך הבית ומהניווט; `lib/ui/chord_transitions_screen.dart` נשאר בקוד אך לא נטען (אין טיימרים ברקע).
 2. **קטלוג לפי רמת קושי** — `difficulty` (1–5) + `category` לכל אקורד; **30 אקורדים** ב־`assets/chords.json`.
 3. **ספרייה + אימון** — סינון/טאבים לפי 5 רמות; באימון FilterChips לרמה + דרופדאון מסונן.
 4. **דיאגרמת אקורדים** — מספר אצבע על הסריג (1–4), מספרי סריג בצד, חלון מתחיל מסריג 2/3 כשצריך, תוויות מיתר `6·E`…`1·e` מתחת.
 5. **טיונר** — פריסה ללא גלילה: `Column` + `Expanded` (תו flex:2, מד flex:5, תחתית flex:2).
+6. **אתגר האקורדים** — שיא עם ציון שליטה; SFX; grace 350ms; 2 פריימי perfect + onset.
+7. **מנוע זיהוי** — אינטרפולציה פרבולית + onset tracker.
+8. **שירים ופריטות** — טאב «שירים» בניווט התחתון (נגן חופשי: אקורדים/BPM/פריטה/מילים PD); מסך בית → **לימוד פריטות** (6 דפוסים ב־`strum_patterns.json`, מסלול 3 שלבים); `StrumPreviewService` = mediaPlayer + WAV זמני + seek/resume + ארפג׳ו pitched; instrumental = תיבות `| C | G |` בלי מילים מזויפות.
 
 ---
 
@@ -30,6 +40,24 @@
 
 | תאריך | סוג | נתיב APK | מה נכנס לבנייה |
 |--------|-----|----------|----------------|
+| 2026-09-25 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: ארכיטקטורה — טאב «שירים»; לימוד פריטות (6 דפוסים + 3 שלבים); `StrumPreviewService` mediaPlayer+WAV+ארפג׳ו; תיבות ריקות ל־instrumental |
+| 2026-09-25 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: שירים — מסלול מודרך 3 שלבים + נגן חופשי; תיקון `StrumPreviewService` (טיקים ↓/↑/✕); `songs.json` PD + instrumental; RTL+LTR; תיקון פרמטר `activeSegment` ב־`SongLyricLineView` |
+| 2026-09-24 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: שירים/פריטות — עזרה (↓↑✕− + רשת 1־ו־2־ו); השמעת דפוס בלולאה (`StrumPreviewService`); 4 שירים מוכרים עם אקורדים/BPM/דפוס (בלי מילים מקוריות מטעמי ©) |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: שירים ופריטות — מודלים + `songs.json` (3 שירי אימון) + `SongCatalogService`; `StrummingPatternWidget` (highlight לפי BPM); `SongPracticeScreen` (סינון רמה, זיהוי אקורד / ליווי BPM); כפתור במסך הבית |
+| 2026-09-23 | **release v1.0.1** | `releases/acords_v1.0.1.apk` (~48.9MB) | נעילת Release `1.0.1+1` — ארכיון ב־`HANDOFF_2.md`; `pubspec` הועלה ל־`1.0.2+1` לסבב השירים/פריטות |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: שחזור עברית ב־`chord_blitz_screen.dart` (mojibake UTF-8/cp1252 אחרי עריכה קודמת) — כל מחרוזות ה־UI חזרו לעברית תקינה |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: תיקון שורש לשתי בעיות זיהוי — (א) אינטרפולציה פרבולית ב-`estimatePitchCentsOffset` (קוונטיזציית bin גרמה ל-E2/A2/E3 להיראות −35¢ ולהיכשל ב-±25¢); (ב) באתגר: 2 פריימי perfect רצופים + חובת onset (פריטה חדשה, RMS×1.8 מעל מינימום 80–400ms אחורה) תוך 1s מהצבת האקורד — מונע "החלקה" כשמציבים אצבעות על מיתרים שעדיין מצלצלים |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: איפוס מנוע זיהוי למקור — הוסרו הקלות בס/E, H2-H3 rescue, אנטי-גלישה, flush מיוחד; grace 350ms + edge-trigger סטנדרטי באתגר |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: זיהוי בס נמוך (E/A/D וכו׳) — ±40¢ מתחת ל-160Hz, משקל H2/H3 גבוה + rescue אם H1 חלש, ספי אנרגיה/RMS מופחתים ל-80–160Hz |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — הקשחת אנטי-גלישה (תו ייחודי vs אקורד קודם, דחייה אם prev≥3 מיתרים, grace 280ms אחרי פגיעה); סיום «התחל מחדש»→countdown / «תפריט האתגר»→setup; wakelock_plus |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — מניעת גלישה (flush+discard PCM, onset אחרי שקט, דחיית previousChord, דרישת root); סיום — «התחל מחדש»→countdown, «תפריט האתגר»→setup; wakelock_plus בזמן משחק |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — שיא תמיד עם Grade (`שיא אישי: N נק׳ \| Grade X` / `טרם נקבע שיא ברמה זו`); תיאור רמה צמוד לשבבי 1–5 (לא מתחת לקבוצה מותאמת); E — grace 150ms, 1-frame לבס, match הרמוניות עליונות ±40¢ |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — שיא דינמי מ-SharedPreferences לפי רמה (`blitz_highscore_level_N`/`all`/`custom`), טקסט `טרם נקבע שיא ברמה זו`; E — grace 150ms, בלי 2-frame לבס, match על הרמוניות עליונות ±40¢ (התעלמות מ-E2 חלש) |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — שיא בכרטיס רמה בפורמט `שיא אישי: N נק׳ \| Grade X` / `טרם נקבע שיא`; זיהוי: grace 550ms+flush+2 פריימים; הקלת E (סנטים/H2-H3/באס חלש) |
+| 2026-09-23 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — ציון שליטה (S/A/B/C) בכרטיס השיא; SFX עשיר יותר (קומבו/דחיפות/שיא חדש); זיהוי — grace 550ms+flush באפר+2 פריימים לאישור; הקלת E (סנטים/H2-H3/באס חלש×2) |
+| 2026-09-22 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: תיקון קריסה בפתיחה — נוסף `MainActivity.kt` שחסר מהריפו (ClassNotFound); `kotlin-android` ב־gradle. הערה: החלפת APK ממחשב אחר דורשת הסרת התקנה קודמת (חתימה שונה) |
+| 2026-09-22 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר — בוטל +3ש׳ לכל אקורד, בונוס זמן רק ברצף 5 (+5); תיקון נתיב debug ל־`build/.../flutter-apk` (לא `releases/`) |
+| 2026-09-22 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: הקמת סביבה ב־Desktop\chords; חוקי עבודה — debug APK + HANDOFF אחרי כל פעולה; עותק ריליס: `releases/acords_v1.0.1.apk` |
 | 2026-09-11 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: דיאגרמת בארה כפס רציף; אתגר — SnackBar לקבוצה ריקה + מניעת overflow במסך הכנה |
 | 2026-09-01 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: אתגר אקורדים — שיא אישי, ספירה לאחור+SFX, עזרה, קבוצה מותאמת, ציון שליטה/מהירות ממוצעת |
 | 2026-09-01 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.1+1`: הקלה בזיהוי אקורד E / מיתרים נמוכים (סובלנות סנטים לפי תדר, משקלי H2/H3, perfect עם באס חלש אחד) |
@@ -64,9 +92,9 @@
 | שם | Chord Trainer |
 | package | `chord_trainer` |
 | Android id | `com.chordtrainer.chord_trainer` |
-| גרסה | `1.0.1+1` (פיתוח) |
+| גרסה | `1.0.2+1` (פיתוח) |
 | UI | עברית, RTL (`he_IL`) |
-| מצב | **פיתוח** — Release נעול: `releases/acords_v1.0.0.apk` + `releases/windows.zip` (v1.0.0+8) |
+| מצב | **פיתוח** — Release נעול: `releases/acords_v1.0.1.apk` (v1.0.1+1) — ראו `HANDOFF_2.md` |
 
 **אין** Riverpod / Bloc / Provider — רק `StatefulWidget` + streams.
 
@@ -181,10 +209,10 @@ In-tune: ±5 סנט (לוגיקה). מחוג: צביעה ירוקה ~±25.
 - Android: `RECORD_AUDIO`
 - iOS: `NSMicrophoneUsageDescription`
 - Release signing: עדיין מפתחות debug (template) — לפני store release
-- **Release נעול:** `releases/acords_v1.0.0.apk` + `releases/windows.zip` (v1.0.0+8) — אל תדרוס בבניית דיבאג
+- **Release נעול:** `releases/acords_v1.0.1.apk` (v1.0.1+1) — אל תדרוס בבניית דיבאג; פרטים ב־`HANDOFF_2.md`
 - **דיבאג:** `build/app/outputs/flutter-apk/app-debug.apk`
 - אם `flutter build` נכשל בנתיב OneDrive/עברית — לבנות מעותק ב-`C:\AcordsBuild`
-- **Windows release:** `releases/windows.zip` — חבילת שולחן עבודה ל-v1.0.0+8
+- **Windows (היסטורי, v1.0.0):** `releases/windows.zip` — לא עודכן בנעילת 1.0.1
 
 ---
 
@@ -240,7 +268,7 @@ In-tune: ±5 סנט (לוגיקה). מחוג: צביעה ירוקה ~±25.
 
 ## הוראות עדכון (לסוכן)
 
-- **`HANDOFF_2.md` — אסור לערוך.** ארכיון v1.0.0 (+8) בלבד.
+- **`HANDOFF_2.md` — אסור לערוך.** ארכיון Release **v1.0.1 (+1)** בלבד.
 - **`HANDOFF.md` — מסמך העבודה היחיד** לתיעוד באגים, פיצ'רים ובנייות דיבאג.
 
 אחרי `flutter build apk` (debug או release):

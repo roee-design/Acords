@@ -101,8 +101,14 @@ class TargetFrequencyProfile {
     return peak;
   }
 
-  /// Signed cents offset of the strongest bin near the fundamental.
+  /// Signed cents offset of the strongest peak near the fundamental.
   /// Returns null when no energy is present in the search window.
+  ///
+  /// The peak position is refined with quadratic (parabolic) interpolation on
+  /// the log-magnitude of the strongest bin and its two neighbours. Without it
+  /// the estimate is quantised to the bin grid (5.4 Hz at 44.1 kHz / 8192):
+  /// E2 (82.4 Hz) can only be reported as −35 ¢ or +76 ¢, A2 (110 Hz) as
+  /// −37 ¢ or +47 ¢, so those strings could never pass a ±25 ¢ gate.
   double? estimatePitchCentsOffset(
     List<double> magnitudes,
     int fftSize,
@@ -111,7 +117,8 @@ class TargetFrequencyProfile {
   }) {
     final cents = searchCents ?? _defaultSearchCents;
     var bestEnergy = 0.0;
-    double? bestHz;
+    var bestBin = -1;
+    var bestHarmonic = 1;
     for (final harmonic in _pitchSearchHarmonics()) {
       final harmonicHz = fundamentalHz * harmonic;
       if (harmonicHz >= sampleRate / 2) {
@@ -130,21 +137,42 @@ class TargetFrequencyProfile {
         final energy = magnitudes[bin];
         if (energy > bestEnergy) {
           bestEnergy = energy;
-          bestHz = (bin * sampleRate / fftSize) / harmonic;
+          bestBin = bin;
+          bestHarmonic = harmonic;
         }
       }
     }
 
-    if (bestEnergy <= 0) {
+    if (bestEnergy <= 0 || bestBin < 0 || fundamentalHz <= 0) {
       return null;
     }
 
-    final peakHz = bestHz;
-    if (peakHz == null || peakHz <= 0 || fundamentalHz <= 0) {
+    final refinedBin = bestBin + _parabolicOffset(magnitudes, bestBin);
+    final peakHz = (refinedBin * sampleRate / fftSize) / bestHarmonic;
+    if (peakHz <= 0) {
       return null;
     }
 
     return 1200 * log(peakHz / fundamentalHz) / ln2;
+  }
+
+  /// Sub-bin offset in [-0.5, 0.5] of the true peak around [bin], using a
+  /// parabola fitted through log-magnitudes of the bin and its neighbours.
+  double _parabolicOffset(List<double> magnitudes, int bin) {
+    if (bin <= 0 || bin >= magnitudes.length - 1) {
+      return 0;
+    }
+    const eps = 1e-12;
+    final left = log(magnitudes[bin - 1] + eps);
+    final mid = log(magnitudes[bin] + eps);
+    final right = log(magnitudes[bin + 1] + eps);
+    final denom = left - 2 * mid + right;
+    if (denom.abs() < 1e-9 || denom > 0) {
+      // Flat or not a local maximum → keep the bin centre.
+      return 0;
+    }
+    final offset = 0.5 * (left - right) / denom;
+    return offset.clamp(-0.5, 0.5);
   }
 
   double score(List<double> magnitudes, int fftSize, double sampleRate) {

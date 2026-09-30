@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio/audio_analyzer.dart';
 import '../audio/blitz_sfx_service.dart';
@@ -35,6 +36,15 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
   static const int _startSeconds = 30;
   static const Duration _chordGrace = Duration(milliseconds: 350);
 
+  /// Consecutive `perfect` frames (80 ms apart) needed before a hit counts.
+  /// Filters single transitional frames while fingers are still landing.
+  static const int _perfectFramesRequired = 2;
+
+  /// A hit is only accepted if a fresh strum attack was detected this recently
+  /// (measured from the moment the target chord was set). Prevents accepting a
+  /// chord that merely "appeared" on still-ringing strings without a strum.
+  static const Duration _onsetAcceptWindow = Duration(milliseconds: 1000);
+
   final AudioAnalyzer _analyzer = AudioAnalyzer(
     sampleRate: _sampleRate,
     fftSize: _fftSize,
@@ -57,7 +67,8 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
   var _chordsCleared = 0;
   var _bonusSeconds = 0;
   var _highScore = 0;
-  var _wasPerfect = false;
+  var _highScoreGrade = '—';
+  var _perfectFrames = 0;
   var _successGlow = false;
   var _showConfetti = false;
   var _showStreakBonus = false;
@@ -77,6 +88,13 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       case _PoolMode.custom:
         return BlitzPrefs.highScoreKeyCustom;
     }
+  }
+
+  /// Setup-card high score line, e.g. `שיא אישי: 1,200 נק׳ | Grade S`.
+  String get _highScoreDisplayText {
+    if (_highScore <= 0) return 'טרם נקבע שיא ברמה זו';
+    final grade = _highScoreGrade == '—' ? '?' : _highScoreGrade;
+    return 'שיא אישי: ${_formatScore(_highScore)} נק׳ | Grade $grade';
   }
 
   List<ChordDefinition> get _chordPool {
@@ -113,18 +131,24 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
 
   Future<void> _loadPrefs() async {
     final custom = await BlitzPrefs.loadCustomChordIds();
-    final hs = await BlitzPrefs.getHighScore(_highScoreKey);
+    final hs = await BlitzPrefs.getHighScoreRecord(_highScoreKey);
     if (!mounted) return;
     setState(() {
       _customChordIds = custom;
-      _highScore = hs;
+      _highScore = hs.score;
+      _highScoreGrade = hs.gradeLetter;
       _targetChord = _pickRandomChord(excludeId: null);
     });
   }
 
   Future<void> _refreshHighScore() async {
-    final hs = await BlitzPrefs.getHighScore(_highScoreKey);
-    if (mounted) setState(() => _highScore = hs);
+    final hs = await BlitzPrefs.getHighScoreRecord(_highScoreKey);
+    if (mounted) {
+      setState(() {
+        _highScore = hs.score;
+        _highScoreGrade = hs.gradeLetter;
+      });
+    }
   }
 
   @override
@@ -132,6 +156,7 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
     _lifecycleEpoch++;
     _gameTimer?.cancel();
     _feedbackSubscription?.cancel();
+    unawaited(WakelockPlus.disable());
     unawaited(_analyzer.stop());
     MicCaptureGuard.instance.release(this);
     unawaited(_analyzer.dispose());
@@ -158,35 +183,48 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
     if (_analyzer.isBlanking) return;
 
     final isCorrect = feedback.matchStatus == ChordMatchStatus.perfect;
-    if (isCorrect && !_wasPerfect) {
-      _onChordCorrect();
+    if (!isCorrect) {
+      _perfectFrames = 0;
       return;
     }
-    _wasPerfect = isCorrect;
+
+    _perfectFrames++;
+    if (_perfectFrames < _perfectFramesRequired) return;
+
+    // The chord must have actually been strummed for this target — fretting
+    // ringing strings alone never produces an attack, so it cannot score.
+    if (!_analyzer.hasOnsetWithin(_onsetAcceptWindow)) return;
+
+    _perfectFrames = 0;
+    _onChordCorrect();
   }
 
   void _onChordCorrect() {
     final nextStreak = _streak + 1;
     final streakBonus = nextStreak > 0 && nextStreak % 5 == 0;
-    final addedSeconds = 3 + (streakBonus ? 5 : 0);
+    final addedSeconds = streakBonus ? 5 : 0;
     final nextChord = _pickRandomChord(excludeId: _targetChord.id);
 
     if (streakBonus) {
       unawaited(BlitzSfxService.instance.playStreakBonus());
+    } else if (nextStreak >= 2) {
+      unawaited(BlitzSfxService.instance.playComboStep(nextStreak));
     } else {
       unawaited(BlitzSfxService.instance.playSuccess());
     }
 
     setState(() {
-      _timeRemaining += addedSeconds;
-      _bonusSeconds += addedSeconds;
+      if (addedSeconds > 0) {
+        _timeRemaining += addedSeconds;
+        _bonusSeconds += addedSeconds;
+      }
       _score += 100;
       _streak = nextStreak;
       if (nextStreak > _bestStreak) {
         _bestStreak = nextStreak;
       }
       _chordsCleared += 1;
-      _wasPerfect = false;
+      _perfectFrames = 0;
       _successGlow = true;
       _showConfetti = true;
       _showStreakBonus = streakBonus;
@@ -235,7 +273,7 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       _bestStreak = 0;
       _chordsCleared = 0;
       _bonusSeconds = 0;
-      _wasPerfect = false;
+      _perfectFrames = 0;
       _successGlow = false;
       _showConfetti = false;
       _showStreakBonus = false;
@@ -245,6 +283,7 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
     await _runCountdown();
     if (!mounted || _phase != _BlitzPhase.countdown) return;
 
+    unawaited(WakelockPlus.enable());
     setState(() => _phase = _BlitzPhase.playing);
     _startGameClock();
     await _startListening();
@@ -274,6 +313,14 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       setState(() => _timeRemaining -= 1);
       if (_timeRemaining <= 0) {
         unawaited(_endGame());
+        return;
+      }
+      if (_timeRemaining <= 5) {
+        unawaited(
+          BlitzSfxService.instance.playUrgencyTick(
+            critical: _timeRemaining <= 2,
+          ),
+        );
       }
     });
   }
@@ -336,10 +383,17 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
         ? totalPlayed / _chordsCleared
         : null;
     final grade = _MasteryGrade.fromAverage(avgSeconds);
+    final previousHigh = _highScore;
 
     unawaited(BlitzSfxService.instance.playGameOver());
-
-    final previousHigh = _highScore;
+    if (_score > previousHigh && _score > 0) {
+      unawaited(
+        Future<void>.delayed(
+          const Duration(milliseconds: 650),
+          () => BlitzSfxService.instance.playNewHighScore(),
+        ),
+      );
+    }
 
     if (mounted) {
       setState(() {
@@ -351,10 +405,16 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       });
     }
 
-    await BlitzPrefs.saveHighScoreIfBest(_highScoreKey, _score);
+    await BlitzPrefs.saveHighScoreIfBest(
+      key: _highScoreKey,
+      score: _score,
+      gradeLetter: grade.letter,
+      averageSeconds: avgSeconds,
+    );
     await _refreshHighScore();
 
     await _stopListening();
+    unawaited(WakelockPlus.disable());
     if (!mounted) return;
     await _showGameOverSheet(
       averageSeconds: avgSeconds,
@@ -381,6 +441,7 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
         score: _score,
         bestStreak: _bestStreak,
         highScore: _highScore,
+        highScoreGrade: _highScoreGrade,
         isNewHighScore: isNewHighScore,
         averageSeconds: averageSeconds,
         grade: grade,
@@ -390,10 +451,13 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
     if (!mounted) return;
 
     if (action == _GameOverAction.playAgain) {
+      // Same level/group — jump straight into countdown → GO.
+      await _onStartPressed();
+    } else {
+      // Challenge setup menu (not app home).
+      unawaited(WakelockPlus.disable());
       setState(() => _phase = _BlitzPhase.setup);
       await _refreshHighScore();
-    } else {
-      Navigator.of(context).pop();
     }
   }
 
@@ -442,6 +506,9 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       _poolMode = mode;
       if (level != null) _selectedDifficulty = level;
       _errorMessage = null;
+      // Clear immediately so the card never shows another level's score.
+      _highScore = 0;
+      _highScoreGrade = '—';
     });
     if (mode == _PoolMode.custom) {
       await _editCustomGroup();
@@ -570,7 +637,7 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
               ),
               SizedBox(height: 4),
               Text(
-                '30 שניות להתחלה. כל אקורד נכון מוסיף זמן ונקודות.',
+                '30 שניות להתחלה. אקורד נכון = נקודות; רצף של 5 = +5 שניות.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
               ),
@@ -581,66 +648,45 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
         Expanded(
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             decoration: AppTheme.cardDecoration(
               borderColor: AppColors.turquoise.withValues(alpha: 0.35),
             ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 200),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'שיא אישי ברמה זו',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _highScore > 0
-                          ? '${_formatScore(_highScore)} נקודות'
-                          : 'עדיין אין שיא — תהיו הראשונים!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _highScore > 0
-                            ? AppColors.amberBright
-                            : AppColors.textMuted,
-                        fontSize: _highScore > 0 ? 32 : 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (_poolMode == _PoolMode.custom) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        _customChordIds.isEmpty
-                            ? 'לא נבחרו אקורדים לקבוצה'
-                            : '${_customChordIds.length} אקורדים בקבוצה המותאמת',
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Flexible(
-          child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  _highScoreDisplayText,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  softWrap: true,
+                  style: TextStyle(
+                    color: _highScore > 0
+                        ? _MasteryGrade.fromLetter(_highScoreGrade).color
+                        : AppColors.textMuted,
+                    fontSize: _highScore > 0 ? 20 : 16,
+                    fontWeight: FontWeight.bold,
+                    height: 1.25,
+                  ),
+                ),
+                if (_poolMode == _PoolMode.custom) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _customChordIds.isEmpty
+                        ? 'לא נבחרו אקורדים לקבוצה'
+                        : '${_customChordIds.length} אקורדים בקבוצה המותאמת',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0x33FFFFFF)),
+                const SizedBox(height: 10),
                 const Text(
-                  'בחרו רמת קושי',
+                  'בחרו רמת קושי / קבוצה',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -648,76 +694,102 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (var level = ChordDifficultyLevels.min;
-                        level <= ChordDifficultyLevels.max;
-                        level++)
-                      ChoiceChip(
-                        label: Text(ChordDifficultyLevels.labelFor(level)),
-                        selected: _poolMode == _PoolMode.level &&
-                            _selectedDifficulty == level,
-                        onSelected: (_) => unawaited(
-                          _selectPoolMode(_PoolMode.level, level: level),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Level chips first — category sits directly under them.
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (var level = ChordDifficultyLevels.min;
+                                level <= ChordDifficultyLevels.max;
+                                level++)
+                              ChoiceChip(
+                                label: Text(
+                                  ChordDifficultyLevels.labelFor(level),
+                                ),
+                                selected: _poolMode == _PoolMode.level &&
+                                    _selectedDifficulty == level,
+                                onSelected: (_) => unawaited(
+                                  _selectPoolMode(
+                                    _PoolMode.level,
+                                    level: level,
+                                  ),
+                                ),
+                                selectedColor:
+                                    AppColors.turquoise.withValues(alpha: 0.25),
+                                labelStyle: TextStyle(
+                                  color: _poolMode == _PoolMode.level &&
+                                          _selectedDifficulty == level
+                                      ? AppColors.turquoise
+                                      : AppColors.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
                         ),
-                        selectedColor:
-                            AppColors.turquoise.withValues(alpha: 0.25),
-                        labelStyle: TextStyle(
-                          color: _poolMode == _PoolMode.level &&
-                                  _selectedDifficulty == level
-                              ? AppColors.turquoise
-                              : AppColors.textMuted,
-                          fontWeight: FontWeight.w600,
+                        if (_poolMode == _PoolMode.level) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            ChordDifficultyLevels.categoryFor(
+                              _selectedDifficulty,
+                            ),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('כל הרמות'),
+                              selected: _poolMode == _PoolMode.all,
+                              onSelected: (_) =>
+                                  unawaited(_selectPoolMode(_PoolMode.all)),
+                              selectedColor:
+                                  AppColors.amber.withValues(alpha: 0.25),
+                              labelStyle: TextStyle(
+                                color: _poolMode == _PoolMode.all
+                                    ? AppColors.amberBright
+                                    : AppColors.textMuted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            ChoiceChip(
+                              label: const Text('קבוצה מותאמת'),
+                              selected: _poolMode == _PoolMode.custom,
+                              onSelected: (_) =>
+                                  unawaited(_selectPoolMode(_PoolMode.custom)),
+                              selectedColor:
+                                  AppColors.success.withValues(alpha: 0.22),
+                              labelStyle: TextStyle(
+                                color: _poolMode == _PoolMode.custom
+                                    ? AppColors.success
+                                    : AppColors.textMuted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ChoiceChip(
-                      label: const Text('כל הרמות'),
-                      selected: _poolMode == _PoolMode.all,
-                      onSelected: (_) =>
-                          unawaited(_selectPoolMode(_PoolMode.all)),
-                      selectedColor: AppColors.amber.withValues(alpha: 0.25),
-                      labelStyle: TextStyle(
-                        color: _poolMode == _PoolMode.all
-                            ? AppColors.amberBright
-                            : AppColors.textMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
+                        if (_poolMode == _PoolMode.custom) ...[
+                          const SizedBox(height: 6),
+                          TextButton.icon(
+                            onPressed: _editCustomGroup,
+                            icon: const Icon(Icons.edit_rounded, size: 18),
+                            label: const Text('עריכת הקבוצה'),
+                          ),
+                        ],
+                      ],
                     ),
-                    ChoiceChip(
-                      label: const Text('קבוצה מותאמת'),
-                      selected: _poolMode == _PoolMode.custom,
-                      onSelected: (_) =>
-                          unawaited(_selectPoolMode(_PoolMode.custom)),
-                      selectedColor: AppColors.success.withValues(alpha: 0.22),
-                      labelStyle: TextStyle(
-                        color: _poolMode == _PoolMode.custom
-                            ? AppColors.success
-                            : AppColors.textMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                if (_poolMode == _PoolMode.level) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    ChordDifficultyLevels.categoryFor(_selectedDifficulty),
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-                if (_poolMode == _PoolMode.custom) ...[
-                  const SizedBox(height: 6),
-                  TextButton.icon(
-                    onPressed: _editCustomGroup,
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: const Text('עריכת הקבוצה'),
-                  ),
-                ],
                 const SizedBox(height: 8),
                 FilledButton.icon(
                   onPressed: _busy || _phase == _BlitzPhase.countdown
@@ -957,6 +1029,16 @@ enum _MasteryGrade {
     return _MasteryGrade.c;
   }
 
+  static _MasteryGrade fromLetter(String letter) {
+    return switch (letter.toUpperCase()) {
+      'S' => _MasteryGrade.s,
+      'A' => _MasteryGrade.a,
+      'B' => _MasteryGrade.b,
+      'C' => _MasteryGrade.c,
+      _ => _MasteryGrade.none,
+    };
+  }
+
   String get letter => switch (this) {
         _MasteryGrade.s => 'S',
         _MasteryGrade.a => 'A',
@@ -996,6 +1078,7 @@ class _GameOverSheet extends StatelessWidget {
     required this.score,
     required this.bestStreak,
     required this.highScore,
+    required this.highScoreGrade,
     required this.isNewHighScore,
     required this.averageSeconds,
     required this.grade,
@@ -1005,6 +1088,7 @@ class _GameOverSheet extends StatelessWidget {
   final int score;
   final int bestStreak;
   final int highScore;
+  final String highScoreGrade;
   final bool isNewHighScore;
   final double? averageSeconds;
   final _MasteryGrade grade;
@@ -1114,21 +1198,23 @@ class _GameOverSheet extends StatelessWidget {
               _ResultRow(label: 'רצף גבוה ביותר', value: '$bestStreak'),
               _ResultRow(
                 label: 'שיא אישי',
-                value: _formatScore(highScore),
+                value: highScoreGrade != '—'
+                    ? '${_formatScore(highScore)} · $highScoreGrade'
+                    : _formatScore(highScore),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () =>
                     Navigator.of(context).pop(_GameOverAction.playAgain),
                 icon: const Icon(Icons.replay_rounded),
-                label: const Text('משחק חדש'),
+                label: const Text('התחל מחדש'),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () =>
                     Navigator.of(context).pop(_GameOverAction.goHome),
-                icon: const Icon(Icons.home_rounded),
-                label: const Text('חזרה לבית'),
+                icon: const Icon(Icons.tune_rounded),
+                label: const Text('תפריט האתגר'),
               ),
             ],
           ),

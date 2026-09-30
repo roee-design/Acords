@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../audio/mic_capture_guard.dart';
+import '../audio/strum_preview_service.dart';
 import '../models/chord_definition.dart';
 import 'chord_library_screen.dart';
 import 'free_play_screen.dart';
 import 'home_screen.dart';
+import 'song_practice_screen.dart';
 import 'tuner_screen.dart';
 
 /// Root shell with bottom navigation between main app sections.
@@ -31,9 +33,13 @@ class _MainShellState extends State<MainShell> {
         isActive: _selectedIndex == 1,
       ),
       ChordLibraryScreen(catalog: widget.catalog),
+      SongPracticeScreen(
+        catalog: widget.catalog,
+        asTab: true,
+      ),
       TunerScreen(
         catalog: widget.catalog,
-        isActive: _selectedIndex == 3,
+        isActive: _selectedIndex == 4,
       ),
     ];
 
@@ -47,6 +53,7 @@ class _MainShellState extends State<MainShell> {
         onDestinationSelected: (index) {
           if (index == _selectedIndex) return;
           unawaited(() async {
+            await StrumPreviewService.instance.stop();
             await MicCaptureGuard.instance.forceStopAll();
             if (mounted) setState(() => _selectedIndex = index);
           }());
@@ -66,6 +73,11 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.library_music_outlined),
             selectedIcon: Icon(Icons.library_music_rounded),
             label: 'אקורדים',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.queue_music_outlined),
+            selectedIcon: Icon(Icons.queue_music_rounded),
+            label: 'שירים',
           ),
           NavigationDestination(
             icon: Icon(Icons.tune_outlined),
