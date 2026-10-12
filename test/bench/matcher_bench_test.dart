@@ -1,5 +1,8 @@
 // Frame-level matcher bench on synthetic strums (legacy baseline numbers are
 // recorded in HANDOFF.md). Run: flutter test test/bench/matcher_bench_test.dart
+@Tags(['bench'])
+library;
+
 import 'dart:typed_data';
 
 import 'package:chord_trainer/audio/fft_processor.dart';
@@ -39,6 +42,12 @@ bool hits(Eval m, ChordDefinition target,
   return false;
 }
 
+bool sameSound(ChordDefinition a, ChordDefinition b) {
+  Set<int> pcs(ChordDefinition c) => c.notes.map((n) => n.midi % 12).toSet();
+  final x = pcs(a), y = pcs(b);
+  return x.length == y.length && x.containsAll(y);
+}
+
 const conditions = [
   MicConditions(highPassHz: 80, noiseLevel: 0.001),
   MicConditions(highPassHz: 150, noiseLevel: 0.003),
@@ -70,6 +79,7 @@ void main() {
               synth.strum(played, startSec: 0.2), durationSec: 1.6, mic: mic));
           for (final target in chords) {
             final h = hits(matcher, target, frames);
+            if (target.id != played.id && sameSound(target, played)) continue;
             if (target.id == played.id) {
               trials++;
               if (h) { accepts++; } else { miss['${played.id} $mic'] = (miss['${played.id} $mic'] ?? 0) + 1; }

@@ -7,7 +7,12 @@
       "beatsPerBar": 4,
       "subdivision": 1,
       "bpm": 72,
-      "practiceChordIds": ["g_major", "c_major", "d_major", "g_major"],
+      "practiceChordIds": [
+        "g_major",
+        "c_major",
+        "d_major",
+        "g_major"
+      ],
       "strokes": "↓ ↓ ↓ ↓"
     },
     {
@@ -17,7 +22,12 @@
       "beatsPerBar": 4,
       "subdivision": 2,
       "bpm": 90,
-      "practiceChordIds": ["c_major", "g_major", "a_minor", "f_major"],
+      "practiceChordIds": [
+        "c_major",
+        "g_major",
+        "a_minor",
+        "f_major"
+      ],
       "strokes": "↓ - ↓ ↑ - ↑ ↓ ↑"
     },
     {
@@ -27,7 +37,12 @@
       "beatsPerBar": 3,
       "subdivision": 1,
       "bpm": 84,
-      "practiceChordIds": ["c_major", "a_minor", "f_major", "g_major"],
+      "practiceChordIds": [
+        "c_major",
+        "a_minor",
+        "f_major",
+        "g_major"
+      ],
       "strokes": "↓ ↓ ↓"
     },
     {
@@ -37,7 +52,12 @@
       "beatsPerBar": 4,
       "subdivision": 2,
       "bpm": 96,
-      "practiceChordIds": ["e_minor", "d_major", "e_minor", "d_major"],
+      "practiceChordIds": [
+        "e_minor",
+        "d_major",
+        "e_minor",
+        "d_major"
+      ],
       "strokes": "↓ ↓ ✕ ↑ ↓ ↑ ↓ ↑"
     },
     {
@@ -47,7 +67,12 @@
       "beatsPerBar": 4,
       "subdivision": 2,
       "bpm": 70,
-      "practiceChordIds": ["g_major", "c_major", "d_major", "g_major"],
+      "practiceChordIds": [
+        "g_major",
+        "c_major",
+        "d_major",
+        "g_major"
+      ],
       "strokes": "↓ - ↓ ↑ - ↑ ↓ -"
     },
     {
@@ -57,8 +82,88 @@
       "beatsPerBar": 4,
       "subdivision": 4,
       "bpm": 66,
-      "practiceChordIds": ["c_major", "a_minor", "f_major", "g_major"],
+      "practiceChordIds": [
+        "c_major",
+        "a_minor",
+        "f_major",
+        "g_major"
+      ],
       "strokes": "p i m a i m a i"
+    },
+    {
+      "id": "boom_chick_44",
+      "name": "בס־אקורד (קאנטרי)",
+      "description": "צליל בס בודד ואז מכה למטה — \"בום־צ׳יק\". את הבס מנגנים על המיתר הנמוך של האקורד.",
+      "beatsPerBar": 4,
+      "subdivision": 1,
+      "bpm": 84,
+      "practiceChordIds": [
+        "g_major",
+        "c_major",
+        "d_7",
+        "g_major"
+      ],
+      "strokes": "p ↓ p ↓"
+    },
+    {
+      "id": "waltz_bass_34",
+      "name": "ואלס בס־אקורד",
+      "description": "\"בום־צ׳יק־צ׳יק\": בס ואז שתי מכות קלות — בסיס לשירי ואלס ועם.",
+      "beatsPerBar": 3,
+      "subdivision": 1,
+      "bpm": 88,
+      "practiceChordIds": [
+        "g_major",
+        "d_7",
+        "g_major",
+        "c_major"
+      ],
+      "strokes": "p ↓ ↓"
+    },
+    {
+      "id": "offbeat_reggae",
+      "name": "אופ־ביט (רגאיי / סקא)",
+      "description": "מכות קצרות רק על ה\"ו\" שבין הפעימות — שותקים על הפעימה עצמה.",
+      "beatsPerBar": 4,
+      "subdivision": 2,
+      "bpm": 80,
+      "practiceChordIds": [
+        "a_minor",
+        "d_minor",
+        "e_minor",
+        "a_minor"
+      ],
+      "strokes": "- ↓ - ↓ - ↓ - ↓"
+    },
+    {
+      "id": "ballad_68",
+      "name": "בלדה 6/8",
+      "description": "שתי פעימות בתיבה, כל אחת מחולקת לשלוש — תחושה מתנדנדת ורכה.",
+      "beatsPerBar": 2,
+      "subdivision": 3,
+      "bpm": 60,
+      "practiceChordIds": [
+        "c_major",
+        "a_minor",
+        "f_major",
+        "g_major"
+      ],
+      "strokes": "↓ - ↑ ↓ - ↑"
+    },
+    {
+      "id": "folk_arpeggio",
+      "name": "ארפג׳ו עממי (p-i-m-i)",
+      "description": "אגודל על הבס ואז i-m-i על המיתרים 3-2-3 — ליווי שקט לשירים איטיים.",
+      "beatsPerBar": 4,
+      "subdivision": 2,
+      "bpm": 72,
+      "practiceChordIds": [
+        "g_major",
+        "e_minor",
+        "c_major",
+        "d_major"
+      ],
+      "strokes": "p i m i p i m i"
     }
   ]
 }

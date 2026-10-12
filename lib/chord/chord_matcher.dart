@@ -514,6 +514,7 @@ class ChordMatcher {
     }
 
     ChordFeedback? best;
+    ChordDefinition? bestChord;
     var bestScore = double.negativeInfinity;
     for (final chord in chords) {
       final feedback = evaluateFrame(
@@ -526,9 +527,25 @@ class ChordMatcher {
         return freePlayWaiting(frame.inputLevel);
       }
       final score = _matchScore(feedback);
+      final bothPerfectSameChord = best != null &&
+          bestChord != null &&
+          best.isPerfect &&
+          feedback.isPerfect &&
+          chord.soundsLike(bestChord);
+      if (bothPerfectSameChord) {
+        // Open A vs barre A: the barre voicing "matches" an open A too (its
+        // extra octave hides in overtones) — report the easier voicing.
+        if (chord.difficulty < bestChord.difficulty) {
+          best = feedback;
+          bestChord = chord;
+          bestScore = score;
+        }
+        continue;
+      }
       if (score > bestScore) {
         bestScore = score;
         best = feedback;
+        bestChord = chord;
       }
     }
     return best ?? freePlayWaiting(frame.inputLevel);

@@ -1,4 +1,7 @@
 // Strum onset bench. Run: flutter test test/bench/onset_bench_test.dart
+@Tags(['bench'])
+library;
+
 import 'dart:typed_data';
 
 import 'package:chord_trainer/audio/onset_detector.dart';

@@ -1276,6 +1276,965 @@
           "finger": 4
         }
       ]
+    },
+    {
+      "id": "e_minor7",
+      "displayName": "Em7",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "022030",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 0,
+          "noteName": "E2",
+          "midi": 40
+        },
+        {
+          "string": 5,
+          "fret": 2,
+          "noteName": "B2",
+          "midi": 47,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 2,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 2
+        },
+        {
+          "string": 3,
+          "fret": 0,
+          "noteName": "G3",
+          "midi": 55
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 3
+        },
+        {
+          "string": 1,
+          "fret": 0,
+          "noteName": "E4",
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "id": "d_minor7",
+      "displayName": "Dm7",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "xx0211",
+      "notes": [
+        {
+          "string": 4,
+          "fret": 0,
+          "noteName": "D3",
+          "midi": 50
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 2
+        },
+        {
+          "string": 2,
+          "fret": 1,
+          "noteName": "C4",
+          "midi": 60,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 1,
+          "noteName": "F4",
+          "midi": 65,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "f_maj7",
+      "displayName": "Fmaj7",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "xx3210",
+      "notes": [
+        {
+          "string": 4,
+          "fret": 3,
+          "noteName": "F3",
+          "midi": 53,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 2
+        },
+        {
+          "string": 2,
+          "fret": 1,
+          "noteName": "C4",
+          "midi": 60,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 0,
+          "noteName": "E4",
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "id": "c_add9",
+      "displayName": "Cadd9",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "x32033",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 3,
+          "noteName": "C3",
+          "midi": 48,
+          "finger": 2
+        },
+        {
+          "string": 4,
+          "fret": 2,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 1
+        },
+        {
+          "string": 3,
+          "fret": 0,
+          "noteName": "G3",
+          "midi": 55
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 3
+        },
+        {
+          "string": 1,
+          "fret": 3,
+          "noteName": "G4",
+          "midi": 67,
+          "finger": 4
+        }
+      ]
+    },
+    {
+      "id": "a_sus2",
+      "displayName": "Asus2",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "x02200",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 0,
+          "noteName": "A2",
+          "midi": 45
+        },
+        {
+          "string": 4,
+          "fret": 2,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 1
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 2
+        },
+        {
+          "string": 2,
+          "fret": 0,
+          "noteName": "B3",
+          "midi": 59
+        },
+        {
+          "string": 1,
+          "fret": 0,
+          "noteName": "E4",
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "id": "a_sus4",
+      "displayName": "Asus4",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "x02230",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 0,
+          "noteName": "A2",
+          "midi": 45
+        },
+        {
+          "string": 4,
+          "fret": 2,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 1
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 2
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 3
+        },
+        {
+          "string": 1,
+          "fret": 0,
+          "noteName": "E4",
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "id": "d_sus2",
+      "displayName": "Dsus2",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "xx0230",
+      "notes": [
+        {
+          "string": 4,
+          "fret": 0,
+          "noteName": "D3",
+          "midi": 50
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 3
+        },
+        {
+          "string": 1,
+          "fret": 0,
+          "noteName": "E4",
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "id": "e_sus4",
+      "displayName": "Esus4",
+      "difficulty": 2,
+      "category": "פתוחים מתקדמים ושביעיות",
+      "fingering": "022200",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 0,
+          "noteName": "E2",
+          "midi": 40
+        },
+        {
+          "string": 5,
+          "fret": 2,
+          "noteName": "B2",
+          "midi": 47,
+          "finger": 2
+        },
+        {
+          "string": 4,
+          "fret": 2,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 4
+        },
+        {
+          "string": 2,
+          "fret": 0,
+          "noteName": "B3",
+          "midi": 59
+        },
+        {
+          "string": 1,
+          "fret": 0,
+          "noteName": "E4",
+          "midi": 64
+        }
+      ]
+    },
+    {
+      "id": "g_minor",
+      "displayName": "Gm",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "355333",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 3,
+          "noteName": "G2",
+          "midi": 43,
+          "finger": 1
+        },
+        {
+          "string": 5,
+          "fret": 5,
+          "noteName": "D3",
+          "midi": 50,
+          "finger": 3
+        },
+        {
+          "string": 4,
+          "fret": 5,
+          "noteName": "G3",
+          "midi": 55,
+          "finger": 4
+        },
+        {
+          "string": 3,
+          "fret": 3,
+          "noteName": "A#3",
+          "midi": 58,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 3,
+          "noteName": "G4",
+          "midi": 67,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "c_minor",
+      "displayName": "Cm",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "x35543",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 3,
+          "noteName": "C3",
+          "midi": 48,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 5,
+          "noteName": "G3",
+          "midi": 55,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 5,
+          "noteName": "C4",
+          "midi": 60,
+          "finger": 4
+        },
+        {
+          "string": 2,
+          "fret": 4,
+          "noteName": "D#4",
+          "midi": 63,
+          "finger": 2
+        },
+        {
+          "string": 1,
+          "fret": 3,
+          "noteName": "G4",
+          "midi": 67,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "b_flat_major",
+      "displayName": "B♭",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "x13331",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 1,
+          "noteName": "A#2",
+          "midi": 46,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 3,
+          "noteName": "F3",
+          "midi": 53,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 3,
+          "noteName": "A#3",
+          "midi": 58,
+          "finger": 3
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 3
+        },
+        {
+          "string": 1,
+          "fret": 1,
+          "noteName": "F4",
+          "midi": 65,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "a_major_barre",
+      "displayName": "A · בארה",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "577655",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 5,
+          "noteName": "A2",
+          "midi": 45,
+          "finger": 1
+        },
+        {
+          "string": 5,
+          "fret": 7,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 3
+        },
+        {
+          "string": 4,
+          "fret": 7,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 4
+        },
+        {
+          "string": 3,
+          "fret": 6,
+          "noteName": "C#4",
+          "midi": 61,
+          "finger": 2
+        },
+        {
+          "string": 2,
+          "fret": 5,
+          "noteName": "E4",
+          "midi": 64,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 5,
+          "noteName": "A4",
+          "midi": 69,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "a_minor_barre",
+      "displayName": "Am · בארה",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "577555",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 5,
+          "noteName": "A2",
+          "midi": 45,
+          "finger": 1
+        },
+        {
+          "string": 5,
+          "fret": 7,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 3
+        },
+        {
+          "string": 4,
+          "fret": 7,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 4
+        },
+        {
+          "string": 3,
+          "fret": 5,
+          "noteName": "C4",
+          "midi": 60,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 5,
+          "noteName": "E4",
+          "midi": 64,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 5,
+          "noteName": "A4",
+          "midi": 69,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "g_major_barre",
+      "displayName": "G · בארה",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "355433",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 3,
+          "noteName": "G2",
+          "midi": 43,
+          "finger": 1
+        },
+        {
+          "string": 5,
+          "fret": 5,
+          "noteName": "D3",
+          "midi": 50,
+          "finger": 3
+        },
+        {
+          "string": 4,
+          "fret": 5,
+          "noteName": "G3",
+          "midi": 55,
+          "finger": 4
+        },
+        {
+          "string": 3,
+          "fret": 4,
+          "noteName": "B3",
+          "midi": 59,
+          "finger": 2
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 3,
+          "noteName": "G4",
+          "midi": 67,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "c_major_barre",
+      "displayName": "C · בארה",
+      "difficulty": 3,
+      "category": "אקורדי בארה בסיסיים",
+      "fingering": "x35553",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 3,
+          "noteName": "C3",
+          "midi": 48,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 5,
+          "noteName": "G3",
+          "midi": 55,
+          "finger": 2
+        },
+        {
+          "string": 3,
+          "fret": 5,
+          "noteName": "C4",
+          "midi": 60,
+          "finger": 3
+        },
+        {
+          "string": 2,
+          "fret": 5,
+          "noteName": "E4",
+          "midi": 64,
+          "finger": 4
+        },
+        {
+          "string": 1,
+          "fret": 3,
+          "noteName": "G4",
+          "midi": 67,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "b_minor7",
+      "displayName": "Bm7",
+      "difficulty": 4,
+      "category": "אקורדי בארה מתקדמים",
+      "fingering": "x24232",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 2,
+          "noteName": "B2",
+          "midi": 47,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 4,
+          "noteName": "F#3",
+          "midi": 54,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 3,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 2
+        },
+        {
+          "string": 1,
+          "fret": 2,
+          "noteName": "F#4",
+          "midi": 66,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "f_sharp_minor7",
+      "displayName": "F#m7",
+      "difficulty": 4,
+      "category": "אקורדי בארה מתקדמים",
+      "fingering": "242222",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 2,
+          "noteName": "F#2",
+          "midi": 42,
+          "finger": 1
+        },
+        {
+          "string": 5,
+          "fret": 4,
+          "noteName": "C#3",
+          "midi": 49,
+          "finger": 3
+        },
+        {
+          "string": 4,
+          "fret": 2,
+          "noteName": "E3",
+          "midi": 52,
+          "finger": 1
+        },
+        {
+          "string": 3,
+          "fret": 2,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 2,
+          "noteName": "C#4",
+          "midi": 61,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 2,
+          "noteName": "F#4",
+          "midi": 66,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "g_sharp_minor",
+      "displayName": "G#m",
+      "difficulty": 4,
+      "category": "אקורדי בארה מתקדמים",
+      "fingering": "466444",
+      "notes": [
+        {
+          "string": 6,
+          "fret": 4,
+          "noteName": "G#2",
+          "midi": 44,
+          "finger": 1
+        },
+        {
+          "string": 5,
+          "fret": 6,
+          "noteName": "D#3",
+          "midi": 51,
+          "finger": 3
+        },
+        {
+          "string": 4,
+          "fret": 6,
+          "noteName": "G#3",
+          "midi": 56,
+          "finger": 4
+        },
+        {
+          "string": 3,
+          "fret": 4,
+          "noteName": "B3",
+          "midi": 59,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 4,
+          "noteName": "D#4",
+          "midi": 63,
+          "finger": 1
+        },
+        {
+          "string": 1,
+          "fret": 4,
+          "noteName": "G#4",
+          "midi": 68,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "c_sharp_minor7",
+      "displayName": "C#m7",
+      "difficulty": 4,
+      "category": "אקורדי בארה מתקדמים",
+      "fingering": "x46454",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 4,
+          "noteName": "C#3",
+          "midi": 49,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 6,
+          "noteName": "G#3",
+          "midi": 56,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 4,
+          "noteName": "B3",
+          "midi": 59,
+          "finger": 1
+        },
+        {
+          "string": 2,
+          "fret": 5,
+          "noteName": "E4",
+          "midi": 64,
+          "finger": 2
+        },
+        {
+          "string": 1,
+          "fret": 4,
+          "noteName": "G#4",
+          "midi": 68,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "d_minor_barre",
+      "displayName": "Dm · בארה",
+      "difficulty": 4,
+      "category": "אקורדי בארה מתקדמים",
+      "fingering": "x57765",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 5,
+          "noteName": "D3",
+          "midi": 50,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 7,
+          "noteName": "A3",
+          "midi": 57,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 7,
+          "noteName": "D4",
+          "midi": 62,
+          "finger": 4
+        },
+        {
+          "string": 2,
+          "fret": 6,
+          "noteName": "F4",
+          "midi": 65,
+          "finger": 2
+        },
+        {
+          "string": 1,
+          "fret": 5,
+          "noteName": "A4",
+          "midi": 69,
+          "finger": 1
+        }
+      ]
+    },
+    {
+      "id": "b_5",
+      "displayName": "B5",
+      "difficulty": 5,
+      "category": "פאוור צ'ורדס",
+      "fingering": "x244xx",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 2,
+          "noteName": "B2",
+          "midi": 47,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 4,
+          "noteName": "F#3",
+          "midi": 54,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 4,
+          "noteName": "B3",
+          "midi": 59,
+          "finger": 4
+        }
+      ]
+    },
+    {
+      "id": "c_5",
+      "displayName": "C5",
+      "difficulty": 5,
+      "category": "פאוור צ'ורדס",
+      "fingering": "x355xx",
+      "notes": [
+        {
+          "string": 5,
+          "fret": 3,
+          "noteName": "C3",
+          "midi": 48,
+          "finger": 1
+        },
+        {
+          "string": 4,
+          "fret": 5,
+          "noteName": "G3",
+          "midi": 55,
+          "finger": 3
+        },
+        {
+          "string": 3,
+          "fret": 5,
+          "noteName": "C4",
+          "midi": 60,
+          "finger": 4
+        }
+      ]
     }
   ]
 }

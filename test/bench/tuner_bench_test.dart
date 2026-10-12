@@ -1,5 +1,8 @@
 // Tuner accuracy: legacy FFT peak-picking vs YIN.
 // Run: flutter test test/bench/tuner_bench_test.dart
+@Tags(['bench'])
+library;
+
 import 'dart:typed_data';
 
 import 'package:chord_trainer/audio/fft_processor.dart';

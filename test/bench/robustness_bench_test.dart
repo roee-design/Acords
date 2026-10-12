@@ -1,5 +1,8 @@
 // Robustness of the full engine (strum → hit) under harder conditions.
 // Run: flutter test test/bench/robustness_bench_test.dart
+@Tags(['bench'])
+library;
+
 import 'dart:typed_data';
 
 import 'package:chord_trainer/audio/chord_detection_engine.dart';
@@ -38,6 +41,39 @@ void main() {
     // ignore: avoid_print
     print('${name.padRight(34)} correct ${(100 * ok / n).toStringAsFixed(0)}% ($ok/$n) ${bad.isEmpty ? '' : bad.toSet()}');
   }
+
+  test('free play identification', () {
+    final pool = catalog.chords;
+    var ok = 0, n = 0;
+    final wrong = <String, int>{};
+    for (final mic in const [
+      MicConditions(highPassHz: 120, noiseLevel: 0.001),
+      MicConditions(highPassHz: 220, noiseLevel: 0.004, gain: 0.5),
+    ]) {
+      for (var seed = 1; seed <= 2; seed++) {
+        for (final played in chords) {
+          final synth = GuitarSynth(seed: seed * 4000 + chords.indexOf(played));
+          final audio = synth.render(synth.strum(played, startSec: 0.3), durationSec: 1.6, mic: mic);
+          final engine = ChordDetectionEngine()..setFreePlay(pool);
+          String? got;
+          for (final f in engine.addSamples(audio)) {
+            if (f.hit != null) { got = f.hit!.chordId; break; }
+          }
+          n++;
+          final gotChord = got == null ? null : catalog.chordById(got);
+          Set<int> pcs(ChordDefinition c) => c.notes.map((x) => x.midi % 12).toSet();
+          if (gotChord != null && pcs(gotChord).length == pcs(played).length && pcs(gotChord).containsAll(pcs(played))) {
+            ok++;
+          } else {
+            final k = '${played.id}->${got ?? 'none'}';
+            wrong[k] = (wrong[k] ?? 0) + 1;
+          }
+        }
+      }
+    }
+    // ignore: avoid_print
+    print('FREE PLAY identified ${(100 * ok / n).toStringAsFixed(1)}% ($ok/$n) wrong: $wrong');
+  }, timeout: const Timeout(Duration(minutes: 10)));
 
   test('robustness', () {
     const normal = MicConditions(highPassHz: 150, noiseLevel: 0.002);

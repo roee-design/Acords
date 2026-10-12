@@ -1,0 +1,3 @@
+tags:
+  bench:
+    skip: "Slow synthetic benchmarks. Run with: flutter test test/bench --run-skipped"

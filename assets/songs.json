@@ -19,30 +19,66 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "Amazing grace, " },
-            { "chordId": "c_major", "lyrics": "how sweet the " },
-            { "chordId": "g_major", "lyrics": "sound" }
+            {
+              "chordId": "g_major",
+              "lyrics": "Amazing grace, "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "how sweet the "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sound"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "That saved a " },
-            { "chordId": "d_major", "lyrics": "wretch like " },
-            { "chordId": "g_major", "lyrics": "me" }
+            {
+              "chordId": "g_major",
+              "lyrics": "That saved a "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "wretch like "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "me"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "I once was " },
-            { "chordId": "c_major", "lyrics": "lost, but " },
-            { "chordId": "g_major", "lyrics": "now am found" }
+            {
+              "chordId": "g_major",
+              "lyrics": "I once was "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "lost, but "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "now am found"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "Was blind, but " },
-            { "chordId": "d_major", "lyrics": "now I " },
-            { "chordId": "g_major", "lyrics": "see" }
+            {
+              "chordId": "g_major",
+              "lyrics": "Was blind, but "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "now I "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "see"
+            }
           ]
         }
       ]
@@ -66,26 +102,50 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "e_minor", "lyrics": "הנה מה טוב " },
-            { "chordId": "a_minor", "lyrics": "ומה נעים" }
+            {
+              "chordId": "e_minor",
+              "lyrics": "הנה מה טוב "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "ומה נעים"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "d_major", "lyrics": "שבת אחים " },
-            { "chordId": "g_major", "lyrics": "גם יחד" }
+            {
+              "chordId": "d_major",
+              "lyrics": "שבת אחים "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "גם יחד"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "e_minor", "lyrics": "הנה מה טוב " },
-            { "chordId": "a_minor", "lyrics": "ומה נעים" }
+            {
+              "chordId": "e_minor",
+              "lyrics": "הנה מה טוב "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "ומה נעים"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "d_major", "lyrics": "שבת אחים " },
-            { "chordId": "e_minor", "lyrics": "גם יחד" }
+            {
+              "chordId": "d_major",
+              "lyrics": "שבת אחים "
+            },
+            {
+              "chordId": "e_minor",
+              "lyrics": "גם יחד"
+            }
           ]
         }
       ]
@@ -109,26 +169,50 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "c_major", "lyrics": "יונתן הקטן " },
-            { "chordId": "g_major", "lyrics": "רץ בבוקר אל הגן" }
+            {
+              "chordId": "c_major",
+              "lyrics": "יונתן הקטן "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "רץ בבוקר אל הגן"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "הוא טיפס על העץ " },
-            { "chordId": "f_major", "lyrics": "אפרוחים חיפש" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "הוא טיפס על העץ "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "אפרוחים חיפש"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "c_major", "lyrics": "אוי מה קרה " },
-            { "chordId": "g_major", "lyrics": "יונתן נפל" }
+            {
+              "chordId": "c_major",
+              "lyrics": "אוי מה קרה "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "יונתן נפל"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "f_major", "lyrics": "ושבר " },
-            { "chordId": "c_major", "lyrics": "את רגלו" }
+            {
+              "chordId": "f_major",
+              "lyrics": "ושבר "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "את רגלו"
+            }
           ]
         }
       ]
@@ -152,25 +236,46 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "שלום עליכם " },
-            { "chordId": "d_minor", "lyrics": "מלאכי השרת" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "שלום עליכם "
+            },
+            {
+              "chordId": "d_minor",
+              "lyrics": "מלאכי השרת"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "מלאכי עליון" }
+            {
+              "chordId": "g_major",
+              "lyrics": "מלאכי עליון"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "c_major", "lyrics": "ממלך מלכי " },
-            { "chordId": "f_major", "lyrics": "המלכים" }
+            {
+              "chordId": "c_major",
+              "lyrics": "ממלך מלכי "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "המלכים"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "e_major", "lyrics": "הקדוש " },
-            { "chordId": "a_minor", "lyrics": "ברוך הוא" }
+            {
+              "chordId": "e_major",
+              "lyrics": "הקדוש "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "ברוך הוא"
+            }
           ]
         }
       ]
@@ -194,26 +299,50 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "d_minor", "lyrics": "כל עוד בלבב " },
-            { "chordId": "a_major", "lyrics": "פנימה" }
+            {
+              "chordId": "d_minor",
+              "lyrics": "כל עוד בלבב "
+            },
+            {
+              "chordId": "a_major",
+              "lyrics": "פנימה"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "d_minor", "lyrics": "נפש יהודי " },
-            { "chordId": "a_major", "lyrics": "הומיה" }
+            {
+              "chordId": "d_minor",
+              "lyrics": "נפש יהודי "
+            },
+            {
+              "chordId": "a_major",
+              "lyrics": "הומיה"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "f_major", "lyrics": "ולפאתי מזרח " },
-            { "chordId": "c_major", "lyrics": "קדימה" }
+            {
+              "chordId": "f_major",
+              "lyrics": "ולפאתי מזרח "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "קדימה"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "עין לציון " },
-            { "chordId": "d_minor", "lyrics": "צופיה" }
+            {
+              "chordId": "g_major",
+              "lyrics": "עין לציון "
+            },
+            {
+              "chordId": "d_minor",
+              "lyrics": "צופיה"
+            }
           ]
         }
       ]
@@ -237,26 +366,50 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "Are you going to " },
-            { "chordId": "g_major", "lyrics": "Scarborough Fair?" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "Are you going to "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "Scarborough Fair?"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "Parsley, sage, " },
-            { "chordId": "e_major", "lyrics": "rosemary and thyme" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "Parsley, sage, "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "rosemary and thyme"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "Remember me to " },
-            { "chordId": "g_major", "lyrics": "one who lives there" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "Remember me to "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "one who lives there"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "She once was a " },
-            { "chordId": "e_major", "lyrics": "true love of mine" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "She once was a "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "true love of mine"
+            }
           ]
         }
       ]
@@ -280,26 +433,50 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "There is a house in " },
-            { "chordId": "c_major", "lyrics": "New Orleans" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "There is a house in "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "New Orleans"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "d_major", "lyrics": "They call the " },
-            { "chordId": "f_major", "lyrics": "Rising Sun" }
+            {
+              "chordId": "d_major",
+              "lyrics": "They call the "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "Rising Sun"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "a_minor", "lyrics": "And it's been the ruin of " },
-            { "chordId": "c_major", "lyrics": "many a poor boy" }
+            {
+              "chordId": "a_minor",
+              "lyrics": "And it's been the ruin of "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "many a poor boy"
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "e_major", "lyrics": "And God, I know " },
-            { "chordId": "a_minor", "lyrics": "I'm one" }
+            {
+              "chordId": "e_major",
+              "lyrics": "And God, I know "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "I'm one"
+            }
           ]
         }
       ]
@@ -323,18 +500,42 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "" },
-            { "chordId": "d_major", "lyrics": "" },
-            { "chordId": "a_minor", "lyrics": "" },
-            { "chordId": "a_minor", "lyrics": "" }
+            {
+              "chordId": "g_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": ""
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": ""
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "g_major", "lyrics": "" },
-            { "chordId": "d_major", "lyrics": "" },
-            { "chordId": "c_major", "lyrics": "" },
-            { "chordId": "c_major", "lyrics": "" }
+            {
+              "chordId": "g_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": ""
+            }
           ]
         }
       ]
@@ -358,18 +559,710 @@
       "lines": [
         {
           "segments": [
-            { "chordId": "c_major", "lyrics": "" },
-            { "chordId": "g_major", "lyrics": "" },
-            { "chordId": "a_minor", "lyrics": "" },
-            { "chordId": "f_major", "lyrics": "" }
+            {
+              "chordId": "c_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": ""
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": ""
+            }
           ]
         },
         {
           "segments": [
-            { "chordId": "c_major", "lyrics": "" },
-            { "chordId": "g_major", "lyrics": "" },
-            { "chordId": "f_major", "lyrics": "" },
-            { "chordId": "c_major", "lyrics": "" }
+            {
+              "chordId": "c_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": ""
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "oh_susanna",
+      "title": "Oh! Susanna",
+      "artist": "Stephen Foster (1848)",
+      "difficulty": 1,
+      "bpm": 96,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "folk_8",
+        "name": "פריטה עממית",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ ↓ - ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "I come from Alabama with my "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "banjo on my "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "knee,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "I'm going to Louisiana, my "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "true love for to "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "see."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Oh! Susanna, oh "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "don't you cry for "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "me,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "for I come from Alabama with my "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "banjo on my "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "knee."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "saints_marching",
+      "title": "When the Saints Go Marching In",
+      "artist": "Traditional spiritual",
+      "difficulty": 1,
+      "bpm": 100,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "kids_down4",
+        "name": "ארבע מכות למטה",
+        "beatsPerBar": 4,
+        "subdivision": 1,
+        "strokes": "↓ ↓ ↓ ↓"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh when the saints go marching in,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "oh when the saints go marching "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "in,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Lord, how I want to be in that "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "number,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "when the saints go "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "marching "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "in."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "twinkle_star",
+      "title": "Twinkle, Twinkle, Little Star",
+      "artist": "Jane Taylor (1806) · מנגינה עממית",
+      "difficulty": 2,
+      "bpm": 84,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "kids_down4",
+        "name": "ארבע מכות למטה",
+        "beatsPerBar": 4,
+        "subdivision": 1,
+        "strokes": "↓ ↓ ↓ ↓"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Twinkle, twinkle, "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "little "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "star,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "f_major",
+              "lyrics": "how I "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "wonder "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "what you "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "are!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Up a"
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "bove the "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "world so "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "high,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "like a "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "diamond "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "in the "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sky."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Twinkle, twinkle, "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "little "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "star,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "f_major",
+              "lyrics": "how I "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "wonder "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "what you "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "are!"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "happy_birthday",
+      "title": "Happy Birthday",
+      "artist": "Mildred & Patty Hill (1893)",
+      "difficulty": 2,
+      "bpm": 90,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "waltz_34",
+        "name": "ואלס 3/4",
+        "beatsPerBar": 3,
+        "subdivision": 1,
+        "strokes": "↓ ↓ ↓"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Happy birthday to "
+            },
+            {
+              "chordId": "g_7",
+              "lyrics": "you,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_7",
+              "lyrics": "happy birthday to "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "you,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "happy birthday, dear "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "friend,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "happy birthday "
+            },
+            {
+              "chordId": "g_7",
+              "lyrics": "to "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "you!"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "red_river_valley",
+      "title": "Red River Valley",
+      "artist": "Traditional (c. 1870)",
+      "difficulty": 1,
+      "bpm": 92,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "folk_8",
+        "name": "פריטה עממית",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ ↓ - ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "From this valley they say you are going,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "we will miss your bright eyes and sweet "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "smile,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "for they say you are taking the sunshine"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "that has brightened our pathway a "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "while."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Come and sit by my side if you love me,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "do not hasten to bid me a"
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "dieu,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "but remember the Red River "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "Valley"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "and the cowboy who "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "loved you so "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "true."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jingle_bells",
+      "title": "Jingle Bells",
+      "artist": "James Lord Pierpont (1857)",
+      "difficulty": 2,
+      "bpm": 112,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "folk_8",
+        "name": "פריטה עממית",
+        "beatsPerBar": 4,
+        "subdivision": 2,
+        "strokes": "↓ - ↓ ↑ ↓ - ↓ ↑"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Jingle bells, jingle bells, jingle all the way!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Oh what fun it "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "is to ride in a "
+            },
+            {
+              "chordId": "a_7",
+              "lyrics": "one-horse open "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "sleigh, hey!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Jingle bells, jingle bells, jingle all the way!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Oh what fun it "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "is to ride in a "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "one-horse open "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sleigh!"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clementine",
+      "title": "Oh My Darling, Clementine",
+      "artist": "Percy Montrose (1884)",
+      "difficulty": 1,
+      "bpm": 96,
+      "instrumental": false,
+      "rtl": false,
+      "publicDomain": true,
+      "pattern": {
+        "id": "waltz_34",
+        "name": "ואלס 3/4",
+        "beatsPerBar": 3,
+        "subdivision": 1,
+        "strokes": "↓ ↓ ↓"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "In a cavern, in a canyon, excavating for a "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "mine,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "dwelt a miner forty-niner, and his "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "daughter, Clementine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh my darling, oh my darling, oh my darling "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "Clementine,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "you are lost and gone forever, dreadful "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sorry, Clementine."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "david_melech",
+      "title": "דוד מלך ישראל",
+      "artist": "מסורתי",
+      "difficulty": 1,
+      "bpm": 104,
+      "instrumental": false,
+      "rtl": true,
+      "publicDomain": true,
+      "pattern": {
+        "id": "kids_down4",
+        "name": "ארבע מכות למטה",
+        "beatsPerBar": 4,
+        "subdivision": 1,
+        "strokes": "↓ ↓ ↓ ↓"
+      },
+      "lines": [
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "דוד מלך ישראל "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "חי חי וקיים"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "e_major",
+              "lyrics": "דוד מלך ישראל "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "חי חי וקיים"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "דוד מלך ישראל "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "חי חי וקיים"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "e_major",
+              "lyrics": "דוד מלך ישראל "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "חי חי וקיים"
+            }
           ]
         }
       ]

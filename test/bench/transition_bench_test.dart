@@ -1,6 +1,9 @@
 // Chord-change (transition) bench: a player strums a progression and the
 // target advances on every hit, like the song / strumming screens.
 // Run: flutter test test/bench/transition_bench_test.dart
+@Tags(['bench'])
+library;
+
 import 'dart:typed_data';
 
 import 'package:chord_trainer/audio/chord_detection_engine.dart';

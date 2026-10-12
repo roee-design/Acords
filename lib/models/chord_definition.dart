@@ -134,6 +134,16 @@ class ChordDefinition {
     return fingering[index].toLowerCase() == 'x';
   }
 
+  /// Pitch classes this voicing sounds (0 = C … 11 = B).
+  Set<int> get pitchClasses => notes.map((n) => n.midi % 12).toSet();
+
+  /// Same chord in another voicing (e.g. open A and barre A).
+  bool soundsLike(ChordDefinition other) {
+    final a = pitchClasses;
+    final b = other.pitchClasses;
+    return a.length == b.length && a.containsAll(b) && notes.first.midi % 12 == other.notes.first.midi % 12;
+  }
+
   /// First absolute fret shown on the 4-fret diagram (1 = nut visible).
   int get diagramBaseFret {
     final fretted = notes.where((n) => n.fret > 0).map((n) => n.fret);
