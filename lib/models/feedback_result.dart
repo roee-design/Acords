@@ -68,6 +68,9 @@ class ChordFeedback {
     required this.summary,
     required this.noiseFloor,
     required this.inputLevel,
+    this.extraNoteMessage,
+    this.extraNoteHz,
+    this.tuningShiftCents,
   });
 
   final String chordId;
@@ -83,6 +86,18 @@ class ChordFeedback {
 
   /// RMS of the last analyzed frame (0–1) for UI level meter.
   final double inputLevel;
+
+  /// Coaching text when a clear note that does not belong to the chord rings
+  /// (typically a string that should be muted). Null when none.
+  final String? extraNoteMessage;
+
+  /// Frequency of that foreign note, for debugging / UI.
+  final double? extraNoteHz;
+
+  /// Whole-guitar tuning offset estimated from this frame (cents, + = sharp).
+  /// Chord notes are judged relative to it so a guitar that is uniformly a
+  /// little flat/sharp still matches; the tuner fixes the absolute pitch.
+  final double? tuningShiftCents;
 
   List<StringFeedback> get activeStringFeedback => stringFeedback
       .where((s) => s.status != NoteStatus.notInChord)

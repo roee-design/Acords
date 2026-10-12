@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../audio/audio_analyzer.dart';
 import '../audio/mic_capture_guard.dart';
 import '../audio/strum_preview_service.dart';
+import '../services/progress_service.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import '../models/song_definition.dart';
@@ -39,7 +40,6 @@ enum _GuidedStep {
 class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
   static const int _fftSize = 8192;
   static const int _sampleRate = 44100;
-  static const Duration _grace = Duration(milliseconds: 300);
 
   final AudioAnalyzer _analyzer = AudioAnalyzer(
     sampleRate: _sampleRate,
@@ -47,13 +47,13 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
   );
 
   StreamSubscription<ChordFeedback>? _feedbackSub;
+  StreamSubscription<ChordHit>? _hitSub;
   Timer? _beatTimer;
 
   var _step = _GuidedStep.transitions;
   var _listening = false;
   var _busy = false;
   var _lifecycleEpoch = 0;
-  var _wasPerfect = false;
   var _pairIndex = 0;
   var _seqIndex = 0;
   var _strokeIndex = 0;
@@ -70,6 +70,7 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
     super.initState();
     _chordIds = widget.song.chordSequence;
     _pairs = _buildPairs(_chordIds);
+    _hitSub = _analyzer.hitStream.listen(_onHit);
     _feedbackSub = _analyzer.feedbackStream.listen(
       _onFeedback,
       onError: (Object e) {
@@ -89,6 +90,7 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
   void dispose() {
     _beatTimer?.cancel();
     _feedbackSub?.cancel();
+    _hitSub?.cancel();
     _lifecycleEpoch++;
     unawaited(StrumPreviewService.instance.stop());
     unawaited(_analyzer.stop());
@@ -127,7 +129,6 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
       _pairIndex = 0;
       _seqIndex = 0;
       _strokeIndex = 0;
-      _wasPerfect = false;
       _errorMessage = null;
       _feedback = null;
       if (step == _GuidedStep.gradualStrum) {
@@ -148,7 +149,6 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
     setState(() {
       _listening = false;
       _busy = false;
-      _wasPerfect = false;
     });
   }
 
@@ -160,7 +160,6 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
     setState(() {
       _busy = true;
       _errorMessage = null;
-      _wasPerfect = false;
       _pairIndex = 0;
       _seqIndex = 0;
       _strokeIndex = 0;
@@ -234,21 +233,20 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
 
   void _onFeedback(ChordFeedback feedback) {
     if (!mounted || !_listening) return;
-    if (_analyzer.isBlanking) return;
-
-    final isPerfect = feedback.matchStatus == ChordMatchStatus.perfect;
     setState(() => _feedback = feedback);
+  }
 
+  /// Advances only on a confirmed strum of the current chord, so a chord that
+  /// is still ringing (or shared with the next step) never skips ahead.
+  void _onHit(ChordHit hit) {
+    if (!mounted || !_listening) return;
+    if (hit.chordId != _analyzer.targetChordId) return;
+    ProgressService.instance.recordChordHit(hit.chordId);
     if (_step == _GuidedStep.transitions) {
-      if (isPerfect && !_wasPerfect) {
-        _onTransitionHit();
-      }
+      _onTransitionHit();
     } else if (_step == _GuidedStep.gradualStrum) {
-      if (isPerfect && !_wasPerfect) {
-        _advanceSequenceChord();
-      }
+      _advanceSequenceChord();
     }
-    _wasPerfect = isPerfect;
   }
 
   void _onTransitionHit() {
@@ -262,7 +260,6 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
     }
     setState(() {
       _pairIndex += 1;
-      _wasPerfect = false;
     });
     final next = _pairs[_pairIndex];
     final def = widget.chordCatalog.chordById(next.toId);
@@ -270,12 +267,12 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
       _analyzer.setTargetChord(
         def,
         referenceA4Hz: widget.chordCatalog.referenceA4Hz,
-        gracePeriod: _grace,
       );
     }
   }
 
   void _completeStep1() {
+    ProgressService.instance.recordSongGuidedStep(widget.song.id, 1);
     unawaited(_stopAll());
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -294,14 +291,12 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
     }
     setState(() {
       _seqIndex += 1;
-      _wasPerfect = false;
     });
     final def = widget.chordCatalog.chordById(_chordIds[_seqIndex]);
     if (def != null) {
       _analyzer.setTargetChord(
         def,
         referenceA4Hz: widget.chordCatalog.referenceA4Hz,
-        gracePeriod: _grace,
       );
     }
   }
@@ -310,10 +305,10 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
     setState(() {
       _successfulRounds += 1;
       _seqIndex = 0;
-      _wasPerfect = false;
     });
 
     if (_bpmFactor >= 0.98) {
+      ProgressService.instance.recordSongGuidedStep(widget.song.id, 2);
       unawaited(_stopAll());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -337,7 +332,6 @@ class _SongGuidedPathScreenState extends State<SongGuidedPathScreen> {
       _analyzer.setTargetChord(
         def,
         referenceA4Hz: widget.chordCatalog.referenceA4Hz,
-        gracePeriod: _grace,
       );
     }
     _startGradualClock();

@@ -6,6 +6,7 @@ import '../audio/audio_analyzer.dart';
 import '../audio/fft_processor.dart';
 import '../audio/mic_capture_guard.dart';
 import '../chord/chord_matcher.dart';
+import '../services/progress_service.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import 'app_theme.dart';
@@ -48,6 +49,7 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
   );
 
   StreamSubscription<ChordFeedback>? _feedbackSubscription;
+  StreamSubscription<ChordHit>? _hitSubscription;
 
   ChordFeedback? _feedback;
   var _listening = false;
@@ -65,6 +67,12 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
     super.initState();
     _feedback = _matcher.freePlayWaiting(0);
 
+    // Every chord the engine confirms as strummed counts as practice.
+    _hitSubscription = _analyzer.hitStream.listen((hit) {
+      if (mounted && _listening) {
+        ProgressService.instance.recordChordHit(hit.chordId);
+      }
+    });
     _feedbackSubscription = _analyzer.feedbackStream.listen(
       (feedback) {
         if (!mounted) return;
@@ -114,6 +122,7 @@ class _FreePlayScreenState extends State<FreePlayScreen> {
   void dispose() {
     _lifecycleEpoch++;
     _feedbackSubscription?.cancel();
+    _hitSubscription?.cancel();
     unawaited(_analyzer.stop());
     MicCaptureGuard.instance.release(this);
     unawaited(_analyzer.dispose());

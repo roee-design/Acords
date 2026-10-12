@@ -42,6 +42,10 @@ class ChordCoachTip {
     }
 
     final issues = feedback.issues;
+    final extra = feedback.extraNoteMessage;
+    if (issues.isEmpty && extra != null) {
+      return ChordCoachTip(message: extra, tone: ChordMatchStatus.close);
+    }
     if (issues.isEmpty) {
       if (feedback.matchStatus == ChordMatchStatus.close) {
         return const ChordCoachTip(

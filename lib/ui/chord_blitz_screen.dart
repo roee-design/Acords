@@ -10,6 +10,7 @@ import '../audio/mic_capture_guard.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import '../services/blitz_prefs.dart';
+import '../services/progress_service.dart';
 import 'app_theme.dart';
 import 'widgets/chord_fretboard_chart.dart';
 import 'widgets/chord_hero_display.dart';
@@ -34,16 +35,6 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
   static const int _fftSize = 8192;
   static const int _sampleRate = 44100;
   static const int _startSeconds = 30;
-  static const Duration _chordGrace = Duration(milliseconds: 350);
-
-  /// Consecutive `perfect` frames (80 ms apart) needed before a hit counts.
-  /// Filters single transitional frames while fingers are still landing.
-  static const int _perfectFramesRequired = 2;
-
-  /// A hit is only accepted if a fresh strum attack was detected this recently
-  /// (measured from the moment the target chord was set). Prevents accepting a
-  /// chord that merely "appeared" on still-ringing strings without a strum.
-  static const Duration _onsetAcceptWindow = Duration(milliseconds: 1000);
 
   final AudioAnalyzer _analyzer = AudioAnalyzer(
     sampleRate: _sampleRate,
@@ -52,6 +43,10 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
   final _rng = Random();
 
   StreamSubscription<ChordFeedback>? _feedbackSubscription;
+  StreamSubscription<ChordHit>? _hitSubscription;
+
+  /// When the current target appeared (for per-chord speed in progress).
+  DateTime _targetShownAt = DateTime.now();
   Timer? _gameTimer;
 
   _BlitzPhase _phase = _BlitzPhase.setup;
@@ -68,7 +63,6 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
   var _bonusSeconds = 0;
   var _highScore = 0;
   var _highScoreGrade = '—';
-  var _perfectFrames = 0;
   var _successGlow = false;
   var _showConfetti = false;
   var _showStreakBonus = false;
@@ -118,8 +112,11 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
   void initState() {
     super.initState();
     _targetChord = widget.catalog.chords.first;
+    // A chord counts only when the engine confirms a fresh strum of it
+    // (see ChordDetectionEngine) — fretting over ringing strings never scores.
+    _hitSubscription = _analyzer.hitStream.listen(_onHit);
     _feedbackSubscription = _analyzer.feedbackStream.listen(
-      _onFeedback,
+      (_) {},
       onError: (Object error) {
         if (!mounted) return;
         setState(() => _errorMessage = error.toString());
@@ -156,6 +153,7 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
     _lifecycleEpoch++;
     _gameTimer?.cancel();
     _feedbackSubscription?.cancel();
+    _hitSubscription?.cancel();
     unawaited(WakelockPlus.disable());
     unawaited(_analyzer.stop());
     MicCaptureGuard.instance.release(this);
@@ -178,24 +176,12 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
     return next;
   }
 
-  void _onFeedback(ChordFeedback feedback) {
+  void _onHit(ChordHit hit) {
     if (!mounted || _phase != _BlitzPhase.playing) return;
-    if (_analyzer.isBlanking) return;
-
-    final isCorrect = feedback.matchStatus == ChordMatchStatus.perfect;
-    if (!isCorrect) {
-      _perfectFrames = 0;
-      return;
-    }
-
-    _perfectFrames++;
-    if (_perfectFrames < _perfectFramesRequired) return;
-
-    // The chord must have actually been strummed for this target — fretting
-    // ringing strings alone never produces an attack, so it cannot score.
-    if (!_analyzer.hasOnsetWithin(_onsetAcceptWindow)) return;
-
-    _perfectFrames = 0;
+    if (hit.chordId != _targetChord.id) return;
+    final seconds =
+        DateTime.now().difference(_targetShownAt).inMilliseconds / 1000.0;
+    ProgressService.instance.recordChordHit(hit.chordId, seconds: seconds);
     _onChordCorrect();
   }
 
@@ -224,7 +210,6 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
         _bestStreak = nextStreak;
       }
       _chordsCleared += 1;
-      _perfectFrames = 0;
       _successGlow = true;
       _showConfetti = true;
       _showStreakBonus = streakBonus;
@@ -232,10 +217,10 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       _targetChord = nextChord;
     });
 
+    _targetShownAt = DateTime.now();
     _analyzer.setTargetChord(
       nextChord,
       referenceA4Hz: widget.catalog.referenceA4Hz,
-      gracePeriod: _chordGrace,
     );
 
     Future<void>.delayed(const Duration(milliseconds: 700), () {
@@ -273,7 +258,6 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
       _bestStreak = 0;
       _chordsCleared = 0;
       _bonusSeconds = 0;
-      _perfectFrames = 0;
       _successGlow = false;
       _showConfetti = false;
       _showStreakBonus = false;
@@ -334,10 +318,10 @@ class _ChordBlitzScreenState extends State<ChordBlitzScreen> {
 
     try {
       await MicCaptureGuard.instance.claim(this, _stopListening);
-      _analyzer.setTargetChord(
+      _targetShownAt = DateTime.now();
+    _analyzer.setTargetChord(
         _targetChord,
         referenceA4Hz: widget.catalog.referenceA4Hz,
-        gracePeriod: _chordGrace,
       );
       await _analyzer.start();
       if (epoch != _lifecycleEpoch || !mounted || _phase != _BlitzPhase.playing) {

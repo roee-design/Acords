@@ -9,11 +9,13 @@ import '../audio/mic_capture_guard.dart';
 import '../chord/chord_matcher.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
+import '../services/progress_service.dart';
 import 'app_theme.dart';
 import 'widgets/chord_coach_tip.dart';
 import 'widgets/chord_fretboard_chart.dart';
 import 'widgets/chord_hero_display.dart';
 import 'widgets/help_sheet.dart';
+import 'widgets/mastery_badge.dart';
 
 /// Main practice UI: chord picker, live fretboard feedback, and coaching tip.
 class PracticeScreen extends StatefulWidget {
@@ -21,9 +23,13 @@ class PracticeScreen extends StatefulWidget {
     super.key,
     required this.catalog,
     this.isActive = true,
+    this.initialChord,
   });
 
   final ChordCatalog catalog;
+
+  /// Chord to open with; defaults to the last practised chord.
+  final ChordDefinition? initialChord;
 
   /// When false, mic capture must stop (for consistency with tab screens).
   final bool isActive;
@@ -49,6 +55,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   );
 
   StreamSubscription<ChordFeedback>? _feedbackSubscription;
+  StreamSubscription<ChordHit>? _hitSubscription;
 
   late ChordDefinition _selectedChord;
   ChordFeedback? _feedback;
@@ -57,7 +64,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
   var _successGlow = false;
   var _showConfetti = false;
   var _confettiTick = 0;
-  var _wasPerfect = false;
   var _selectedDifficulty = 1;
   /// Serializes stop/start so tab/nav switches cannot leave the mic on.
   var _lifecycleEpoch = 0;
@@ -70,22 +76,23 @@ class _PracticeScreenState extends State<PracticeScreen> {
   void initState() {
     super.initState();
     final level1 = widget.catalog.chordsForDifficulty(1);
-    _selectedChord = level1.isNotEmpty
-        ? level1.first
-        : widget.catalog.chordsByDifficultyThenName.first;
+    final progress = ProgressService.instance;
+    final remembered = progress.lastChordId == null
+        ? null
+        : widget.catalog.chordById(progress.lastChordId!);
+    _selectedChord = widget.initialChord ??
+        remembered ??
+        (level1.isNotEmpty
+            ? level1.first
+            : widget.catalog.chordsByDifficultyThenName.first);
     _selectedDifficulty = _selectedChord.difficulty;
     _feedback = _matcher.idleFeedback(_selectedChord);
 
     _feedbackSubscription = _analyzer.feedbackStream.listen(
       (feedback) {
         if (!mounted) return;
-        final isPerfect = feedback.matchStatus == ChordMatchStatus.perfect;
-        if (isPerfect && !_wasPerfect && _listening) {
-          _triggerSuccessEffects();
-        }
         setState(() {
           _feedback = feedback;
-          _wasPerfect = isPerfect;
         });
       },
       onError: (Object error) {
@@ -100,6 +107,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
         }
       },
     );
+
+    // Celebrate (and count) only a chord that was actually strummed — not one
+    // that turns "perfect" while fingers are adjusted on ringing strings.
+    _hitSubscription = _analyzer.hitStream.listen((hit) {
+      if (!mounted || !_listening) return;
+      _triggerSuccessEffects();
+      ProgressService.instance.recordChordHit(hit.chordId);
+    });
 
     _analyzer.setTargetChord(
       _selectedChord,
@@ -125,6 +140,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   void dispose() {
     _lifecycleEpoch++;
     _feedbackSubscription?.cancel();
+    _hitSubscription?.cancel();
     unawaited(_analyzer.stop());
     MicCaptureGuard.instance.release(this);
     unawaited(_analyzer.dispose());
@@ -167,13 +183,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
     }
 
     final next = chords.first;
+    ProgressService.instance.rememberPracticeSelection(
+      difficulty: level,
+      chordId: next.id,
+    );
     setState(() {
       _selectedDifficulty = level;
       _selectedChord = next;
       _feedback = _matcher.idleFeedback(next);
       _errorMessage = null;
       _listening = false;
-      _wasPerfect = false;
       _successGlow = false;
       _showConfetti = false;
     });
@@ -198,12 +217,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
       await _analyzer.stop();
     }
 
+    ProgressService.instance.rememberPracticeSelection(
+      difficulty: chord.difficulty,
+      chordId: chord.id,
+    );
     setState(() {
       _selectedChord = chord;
       _feedback = _matcher.idleFeedback(chord);
       _errorMessage = null;
       _listening = false;
-      _wasPerfect = false;
       _successGlow = false;
       _showConfetti = false;
     });
@@ -237,7 +259,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
     setState(() {
       _busy = true;
       _errorMessage = null;
-      _wasPerfect = false;
     });
 
     try {
@@ -284,7 +305,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
       setState(() {
         _listening = false;
         _busy = false;
-        _wasPerfect = false;
         _successGlow = false;
         _showConfetti = false;
         _feedback = _matcher.idleFeedback(_selectedChord);
@@ -332,6 +352,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 chordName: _selectedChord.displayName,
                 label: 'אקורד יעד',
                 chord: _selectedChord,
+                subtitle: chordProgressSubtitle(
+                  ProgressService.instance.chord(_selectedChord.id),
+                ),
                 showFretboard: false,
                 compact: true,
                 successGlow: _successGlow,

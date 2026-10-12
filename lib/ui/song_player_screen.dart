@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../audio/audio_analyzer.dart';
 import '../audio/mic_capture_guard.dart';
 import '../audio/strum_preview_service.dart';
+import '../services/progress_service.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import '../models/song_definition.dart';
@@ -36,7 +37,6 @@ enum _PlayGate {
 class _SongPlayerScreenState extends State<SongPlayerScreen> {
   static const int _fftSize = 8192;
   static const int _sampleRate = 44100;
-  static const Duration _chordGrace = Duration(milliseconds: 280);
 
   final AudioAnalyzer _analyzer = AudioAnalyzer(
     sampleRate: _sampleRate,
@@ -44,13 +44,13 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
   );
 
   StreamSubscription<ChordFeedback>? _feedbackSub;
+  StreamSubscription<ChordHit>? _hitSub;
   Timer? _beatTimer;
 
   var _gate = _PlayGate.chordGate;
   var _listening = false;
   var _busy = false;
   var _lifecycleEpoch = 0;
-  var _wasPerfect = false;
   var _chordIndex = 0;
   var _strokeIndex = 0;
   var _completed = false;
@@ -65,6 +65,7 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
   void initState() {
     super.initState();
     _cursors = _buildCursors(widget.song);
+    _hitSub = _analyzer.hitStream.listen(_onHit);
     _feedbackSub = _analyzer.feedbackStream.listen(
       _onFeedback,
       onError: (Object e) {
@@ -85,6 +86,7 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
   void dispose() {
     _beatTimer?.cancel();
     _feedbackSub?.cancel();
+    _hitSub?.cancel();
     _lifecycleEpoch++;
     unawaited(StrumPreviewService.instance.stop());
     unawaited(_analyzer.stop());
@@ -125,25 +127,21 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
     _analyzer.setTargetChord(
       def,
       referenceA4Hz: widget.chordCatalog.referenceA4Hz,
-      gracePeriod: grace ? _chordGrace : null,
+      // No grace needed: a hit requires a strum made after this call.
     );
-    _wasPerfect = false;
   }
 
   void _onFeedback(ChordFeedback feedback) {
     if (!mounted || !_listening || _completed) return;
-    if (_gate != _PlayGate.chordGate) {
-      setState(() => _feedback = feedback);
-      return;
-    }
-    if (_analyzer.isBlanking) return;
-
-    final isPerfect = feedback.matchStatus == ChordMatchStatus.perfect;
     setState(() => _feedback = feedback);
-    if (isPerfect && !_wasPerfect) {
-      _advanceChord();
-    }
-    _wasPerfect = isPerfect;
+  }
+
+  void _onHit(ChordHit hit) {
+    if (!mounted || !_listening || _completed) return;
+    if (_gate != _PlayGate.chordGate) return;
+    if (hit.chordId != _analyzer.targetChordId) return;
+    ProgressService.instance.recordChordHit(hit.chordId);
+    _advanceChord();
   }
 
   void _advanceChord() {
@@ -152,12 +150,12 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
         _completed = true;
         _chordIndex = _cursors.length;
       });
+      ProgressService.instance.recordSongCompleted(widget.song.id);
       unawaited(_stopListening());
       return;
     }
     setState(() {
       _chordIndex += 1;
-      _wasPerfect = false;
     });
     _applyTargetChord(grace: true);
   }
@@ -233,7 +231,6 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
     setState(() {
       _listening = false;
       _busy = false;
-      _wasPerfect = false;
       _strokeIndex = 0;
     });
   }

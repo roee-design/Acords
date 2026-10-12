@@ -38,6 +38,33 @@ class FftProcessor {
     return spectrum.discardConjugates().magnitudes();
   }
 
+  /// Magnitude spectrum of only the newest [length] samples of [samples],
+  /// Hann-windowed over that span and zero-padded to [fftSize].
+  ///
+  /// Used right after a strum so the previous chord's ringing tail (older
+  /// samples in the buffer) does not mix into the new chord's spectrum.
+  List<double> computeMagnitudesOfTail(Float32List samples, int length) {
+    final n = min(length, min(samples.length, fftSize));
+    if (n >= fftSize) {
+      return computeMagnitudes(samples);
+    }
+    _input.fillRange(0, _input.length, 0);
+    final offset = samples.length - n;
+    final denom = max(1, n - 1);
+    for (var i = 0; i < n; i++) {
+      final w = 0.5 * (1 - cos(2 * pi * i / denom));
+      _input[i] = samples[offset + i] * w;
+    }
+    final spectrum = _fft.realFft(_input);
+    // Scale up so magnitudes stay comparable with full-window frames.
+    final scale = fftSize / n;
+    final mags = spectrum.discardConjugates().magnitudes();
+    for (var i = 0; i < mags.length; i++) {
+      mags[i] *= scale;
+    }
+    return mags;
+  }
+
   /// Noise floor from high-frequency bins (room hiss, not guitar fundamentals).
   double estimateNoiseFloor(List<double> magnitudes) {
     const guitarCeilingHz = 1200.0;

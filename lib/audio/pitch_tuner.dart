@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -7,6 +8,8 @@ import 'package:record/record.dart';
 import 'fft_processor.dart';
 import 'frequency_utils.dart';
 import 'ring_buffer.dart';
+import 'spectrum_frame.dart';
+import 'yin_pitch.dart';
 
 /// Live pitch reading for the standalone string tuner.
 class PitchReading {
@@ -59,7 +62,192 @@ class PitchReading {
   }
 }
 
-/// Mic → FFT → estimated pitch in cents relative to nearest note.
+/// Mic-free tuner logic: frame of samples → [PitchReading].
+///
+/// Two stages:
+/// 1. YIN on the waveform decides *which* note is sounding. It works on the
+///    period, so a low string whose fundamental the phone mic barely picks up
+///    is still read in the right octave (where FFT peak-picking jumps to the
+///    2nd/3rd harmonic). With a string selected the search is limited to ±8
+///    semitones around it.
+/// 2. The frequency is then refined on an 8192-point spectrum at that note's
+///    fundamental (or 2nd/3rd harmonic ÷ k when the fundamental is weak).
+///    YIN alone is biased sharp by string inharmonicity (upper partials run
+///    slightly sharp), which costs several cents — too much for a tuner.
+///
+/// In auto mode the reading is matched to the nearest open string
+/// (±2 semitones). A median over the last 3 readings steadies the needle.
+class TunerPitchEstimator {
+  TunerPitchEstimator({
+    this.sampleRate = 44100,
+    this.minHz = 70,
+    this.maxHz = 700,
+    this.fftSize = 8192,
+  })  : _yin = YinPitchEstimator(sampleRate: sampleRate),
+        _fft = FftProcessor(fftSize: fftSize, sampleRate: sampleRate.toDouble());
+
+  final int sampleRate;
+  final double minHz;
+  final double maxHz;
+  final int fftSize;
+  final YinPitchEstimator _yin;
+  final FftProcessor _fft;
+
+  double referenceA4Hz = 440;
+  List<(int stringNumber, int openMidi, String name)> openStrings = const [];
+  int? targetStringNumber;
+
+  final List<double> _recentHz = <double>[];
+
+  int get requiredSamples => _yin.requiredSamples(minHz);
+
+  void resetSmoothing() => _recentHz.clear();
+
+  /// [frame]: newest samples, ideally [fftSize] long (YIN uses the tail).
+  PitchReading estimate(Float32List frame, double level) {
+    final target = _targetOpenString();
+    double? hz;
+    if (target != null) {
+      final targetHz = midiToHz(target.$2, a4Hz: referenceA4Hz);
+      final factor = pow(2, 8 / 12).toDouble();
+      hz = _yin
+          .estimate(
+            frame,
+            minHz: max(minHz * 0.9, targetHz / factor),
+            maxHz: targetHz * factor,
+          )
+          ?.hz;
+    } else {
+      hz = _yin.estimate(frame, minHz: minHz, maxHz: maxHz)?.hz;
+    }
+    if (hz == null) {
+      _recentHz.clear();
+      return PitchReading.silent(inputLevel: level);
+    }
+    hz = _refineWithSpectrum(frame, hz);
+
+    // Median of the last 3 estimates, reset when the pitch jumps (new note).
+    if (_recentHz.isNotEmpty &&
+        (1200 * log(hz / _recentHz.last) / ln2).abs() > 80) {
+      _recentHz.clear();
+    }
+    _recentHz.add(hz);
+    if (_recentHz.length > 3) _recentHz.removeAt(0);
+    final sorted = [..._recentHz]..sort();
+    final smoothHz = sorted[sorted.length ~/ 2];
+
+    final midiFloat = 69 + 12 * (log(smoothHz / referenceA4Hz) / ln2);
+
+    if (target != null) {
+      final targetNote = _midiToNoteName(target.$2);
+      return PitchReading(
+        isSilent: false,
+        inputLevel: level,
+        frequencyHz: smoothHz,
+        noteName: targetNote,
+        midi: target.$2,
+        centsOffset: (midiFloat - target.$2) * 100,
+        closestStringNumber: target.$1,
+        closestStringLabel: stringLabel(target.$1),
+        targetNoteName: targetNote,
+      );
+    }
+
+    final closest = _closestOpenStringWithin(midiFloat, maxSemitones: 2);
+    if (closest == null) {
+      return PitchReading.awaitingOpenString(inputLevel: level);
+    }
+    final openMidi = closest.$2;
+    final targetNote = _midiToNoteName(openMidi);
+    return PitchReading(
+      isSilent: false,
+      inputLevel: level,
+      frequencyHz: smoothHz,
+      noteName: targetNote,
+      midi: openMidi,
+      centsOffset: (midiFloat - openMidi) * 100,
+      closestStringNumber: closest.$1,
+      closestStringLabel: stringLabel(closest.$1),
+      targetNoteName: targetNote,
+    );
+  }
+
+  double _refineWithSpectrum(Float32List frame, double yinHz) {
+    if (frame.length < fftSize ~/ 2) return yinHz;
+    final spectrum = SpectrumFrame(
+      magnitudes: frame.length >= fftSize
+          ? _fft.computeMagnitudes(
+              Float32List.sublistView(frame, frame.length - fftSize),
+            )
+          : _fft.computeMagnitudesOfTail(frame, frame.length),
+      fftSize: fftSize,
+      sampleRate: sampleRate.toDouble(),
+      inputLevel: 0,
+    );
+    final peaks = <(int k, SpectralPeak peak)>[];
+    for (final k in const [1, 2, 3]) {
+      final center = yinHz * k;
+      final tolerance = max(center * 0.035, spectrum.binHz * 1.5); // ~60 ¢
+      final p = spectrum.peakNear(center, tolerance);
+      if (p != null) peaks.add((k, p));
+    }
+    if (peaks.isEmpty) return yinHz;
+    var strongest = peaks.first.$2.magnitude;
+    for (final p in peaks) {
+      strongest = max(strongest, p.$2.magnitude);
+    }
+    // Lowest harmonic that is clearly present: it has the least inharmonic
+    // stretch and the finest relative resolution after dividing by k.
+    for (final (k, p) in peaks) {
+      if (p.magnitude >= strongest * 0.2) {
+        final refined = p.hz / k;
+        // Guard against grabbing a neighbouring partial.
+        if ((1200 * log(refined / yinHz) / ln2).abs() <= 60) return refined;
+      }
+    }
+    return yinHz;
+  }
+
+  (int stringNumber, int openMidi, String name)? _targetOpenString() {
+    final target = targetStringNumber;
+    if (target == null) return null;
+    for (final s in openStrings) {
+      if (s.$1 == target) return s;
+    }
+    return null;
+  }
+
+  /// Nearest catalog open string within [maxSemitones], else null.
+  (int stringNumber, int openMidi, String name)? _closestOpenStringWithin(
+    double midiFloat, {
+    required double maxSemitones,
+  }) {
+    if (openStrings.isEmpty) return null;
+    var best = openStrings.first;
+    var bestDiff = (midiFloat - best.$2).abs();
+    for (final s in openStrings) {
+      final diff = (midiFloat - s.$2).abs();
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = s;
+      }
+    }
+    if (bestDiff > maxSemitones) return null;
+    return best;
+  }
+
+  static const _names = [
+    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
+  ];
+
+  static String _midiToNoteName(int midi) {
+    final name = _names[midi % 12];
+    final octave = (midi ~/ 12) - 1;
+    return '$name$octave';
+  }
+}
+
+/// Mic → YIN → pitch in cents relative to the target / nearest open string.
 class PitchTuner {
   PitchTuner({
     this.sampleRate = 44100,
@@ -68,9 +256,10 @@ class PitchTuner {
     this.silenceLevel = 0.008,
     this.minHz = 70,
     this.maxHz = 700,
-  })  : _fftProcessor = FftProcessor(
-          fftSize: fftSize,
-          sampleRate: sampleRate.toDouble(),
+  })  : _estimator = TunerPitchEstimator(
+          sampleRate: sampleRate,
+          minHz: minHz,
+          maxHz: maxHz,
         ),
         _ringBuffer = AudioRingBuffer(fftSize),
         _recorder = AudioRecorder();
@@ -82,7 +271,7 @@ class PitchTuner {
   final double minHz;
   final double maxHz;
 
-  final FftProcessor _fftProcessor;
+  final TunerPitchEstimator _estimator;
   final AudioRingBuffer _ringBuffer;
   final AudioRecorder _recorder;
 
@@ -96,31 +285,27 @@ class PitchTuner {
   /// Bumped on every stop/dispose so a late [start] cannot leave the mic on.
   var _sessionId = 0;
   Future<void>? _operation;
-  double _referenceA4Hz = 440;
-
-  /// Optional open-string MIDI hints (6→1) from the catalog.
-  List<(int stringNumber, int openMidi, String name)> _openStrings = const [];
-
-  /// When set, cents are vs this open string and pitch search focuses nearby.
-  int? _targetStringNumber;
 
   Stream<PitchReading> get readings => _controller.stream;
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
-  int? get targetStringNumber => _targetStringNumber;
+  int? get targetStringNumber => _estimator.targetStringNumber;
 
   void configure({
     double referenceA4Hz = 440,
     List<(int stringNumber, int openMidi, String name)> openStrings =
         const [],
   }) {
-    _referenceA4Hz = referenceA4Hz;
-    _openStrings = openStrings;
+    _estimator
+      ..referenceA4Hz = referenceA4Hz
+      ..openStrings = openStrings;
   }
 
   /// Lock tuning to an open string (`null` = auto among open strings only).
   void setTargetString(int? stringNumber) {
-    _targetStringNumber = stringNumber;
+    _estimator
+      ..targetStringNumber = stringNumber
+      ..resetSmoothing();
   }
 
   Future<bool> ensureMicrophonePermission() async {
@@ -259,348 +444,24 @@ class PitchTuner {
     _lastAnalysisTime = now;
 
     final frame = _ringBuffer.toOrderedFrame();
-    final level = frameRms(frame);
-    final magnitudes = _fftProcessor.computeMagnitudes(frame);
+    // Level from the newest ~60 ms so the silence gate reacts quickly.
+    final recent = Float32List.sublistView(
+      frame,
+      max(0, frame.length - _estimator.requiredSamples),
+    );
+    final level = frameRms(recent);
 
     if (level < silenceLevel) {
+      _estimator.resetSmoothing();
       if (!_controller.isClosed) {
         _controller.add(PitchReading.silent(inputLevel: level));
       }
       return;
     }
 
-    final reading = _estimatePitch(magnitudes, level);
+    final reading = _estimator.estimate(frame, level);
     if (!_controller.isClosed) {
       _controller.add(reading);
     }
-  }
-
-  PitchReading _estimatePitch(List<double> magnitudes, double level) {
-    final target = _targetOpenString();
-    // Locked string: search near target Hz. Auto: broad peak then match open strings.
-    final peak = target != null
-        ? _findFrequencyNearTarget(magnitudes, target.$2)
-        : _findDominantFrequency(magnitudes);
-    if (peak == null) {
-      return PitchReading.silent(inputLevel: level);
-    }
-
-    final hz = peak;
-    // MIDI float from Hz (A4 = reference) — used for cent deviation vs open string.
-    final midiFloat = 69 + 12 * (log(hz / _referenceA4Hz) / ln2);
-
-    if (target != null) {
-      // Locked string: cents relative to that open MIDI.
-      final targetNote = _midiToNoteName(target.$2);
-      return PitchReading(
-        isSilent: false,
-        inputLevel: level,
-        frequencyHz: hz,
-        noteName: targetNote,
-        midi: target.$2,
-        centsOffset: (midiFloat - target.$2) * 100,
-        closestStringNumber: target.$1,
-        closestStringLabel: stringLabel(target.$1),
-        targetNoteName: targetNote,
-      );
-    }
-
-    // Auto mode: match only the 6 open strings (±2 semitones).
-    final closest = _closestOpenStringWithin(midiFloat, maxSemitones: 2);
-    if (closest == null) {
-      return PitchReading.awaitingOpenString(inputLevel: level);
-    }
-
-    final openMidi = closest.$2;
-    final targetNote = _midiToNoteName(openMidi);
-    return PitchReading(
-      isSilent: false,
-      inputLevel: level,
-      frequencyHz: hz,
-      noteName: targetNote,
-      midi: openMidi,
-      centsOffset: (midiFloat - openMidi) * 100,
-      closestStringNumber: closest.$1,
-      closestStringLabel: stringLabel(closest.$1),
-      targetNoteName: targetNote,
-    );
-  }
-
-  (int stringNumber, int openMidi, String name)? _targetOpenString() {
-    final target = _targetStringNumber;
-    if (target == null) return null;
-    for (final s in _openStrings) {
-      if (s.$1 == target) return s;
-    }
-    return null;
-  }
-
-  /// Peak-pick in 70–700 Hz; prefer fundamental when a strong harmonic is detected.
-  double? _findDominantFrequency(List<double> magnitudes) {
-    final binWidth = sampleRate / fftSize;
-    final minBin = max(1, (minHz / binWidth).floor());
-    final maxBin = min(magnitudes.length - 1, (maxHz / binWidth).ceil());
-
-    var bestBin = -1;
-    var bestEnergy = 0.0;
-    for (var bin = minBin; bin <= maxBin; bin++) {
-      final e = magnitudes[bin];
-      if (e > bestEnergy) {
-        bestEnergy = e;
-        bestBin = bin;
-      }
-    }
-
-    if (bestBin < 0 || bestEnergy <= 0) return null;
-
-    var hz = _refineBinToHz(magnitudes, bestBin, binWidth);
-
-    // If this looks like a harmonic of a lower fundamental in range, shift down.
-    // For low strings (<160 Hz), require H1/H2/H3 support before accepting.
-    for (var divisor = 2; divisor <= 4; divisor++) {
-      final candidateHz = hz / divisor;
-      if (candidateHz < minHz) break;
-      final fundEnergy = _neighborhoodPeak(
-        magnitudes,
-        candidateHz,
-        halfWidthHz: 8,
-        minBin: minBin,
-        maxBin: maxBin,
-        binWidth: binWidth,
-      );
-      final supportRatio = candidateHz < 160 ? 0.22 : 0.35;
-      if (fundEnergy > bestEnergy * supportRatio) {
-        final supported = candidateHz < 160
-            ? _hasLowStringHarmonicSupport(
-                magnitudes,
-                candidateHz,
-                minBin: minBin,
-                maxBin: maxBin,
-                binWidth: binWidth,
-              )
-            : true;
-        if (supported) {
-          hz = candidateHz;
-          break;
-        }
-      }
-    }
-
-    if (hz < 160 &&
-        !_hasLowStringHarmonicSupport(
-          magnitudes,
-          hz,
-          minBin: minBin,
-          maxBin: maxBin,
-          binWidth: binWidth,
-        )) {
-      // Weak-mic low fundamentals often hide under H2/H3; rebuild from overtones.
-      final rebuilt = _rebuildLowFundamentalFromHarmonics(
-        magnitudes,
-        hz,
-        minBin: minBin,
-        maxBin: maxBin,
-        binWidth: binWidth,
-      );
-      if (rebuilt != null) {
-        hz = rebuilt;
-      }
-    }
-
-    return hz.clamp(minHz, maxHz);
-  }
-
-  /// When a string is locked: look near its open Hz (and harmonics → fundamental).
-  double? _findFrequencyNearTarget(
-    List<double> magnitudes,
-    int targetMidi,
-  ) {
-    final targetHz = midiToHz(targetMidi, a4Hz: _referenceA4Hz);
-    final binWidth = sampleRate / fftSize;
-    final minBin = max(1, (minHz / binWidth).floor());
-    final maxBin = min(magnitudes.length - 1, (maxHz / binWidth).ceil());
-
-    // Guitar fundamentals are often weak; always score H1/H2/H3 and map back.
-    // Low strings (<160 Hz) especially need the full harmonic series.
-    var bestScore = 0.0;
-    double? bestFundamental;
-
-    for (final harmonic in [1, 2, 3]) {
-      final centerHz = targetHz * harmonic;
-      if (centerHz < minHz || centerHz > maxHz) continue;
-
-      // Wide window so a very flat/sharp string still locks (±3 semitones).
-      final windowHz = targetHz * 0.2;
-      final startBin = max(
-        minBin,
-        ((centerHz - windowHz) / binWidth).floor(),
-      );
-      final endBin = min(
-        maxBin,
-        ((centerHz + windowHz) / binWidth).ceil(),
-      );
-
-      var localBestBin = -1;
-      var localBestEnergy = 0.0;
-      for (var bin = startBin; bin <= endBin; bin++) {
-        final e = magnitudes[bin];
-        if (e > localBestEnergy) {
-          localBestEnergy = e;
-          localBestBin = bin;
-        }
-      }
-      if (localBestBin < 0 || localBestEnergy <= 0) continue;
-
-      // Prefer lower harmonics slightly (fundamental clarity).
-      // For low strings, boost H2/H3 weight so weak mics still lock.
-      final harmonicWeight =
-          targetHz < 160 ? (harmonic == 1 ? 1.0 : 1.15 / harmonic) : 1.0 / harmonic;
-      final score = localBestEnergy * harmonicWeight;
-      if (score > bestScore) {
-        bestScore = score;
-        final peakHz = _refineBinToHz(magnitudes, localBestBin, binWidth);
-        bestFundamental = peakHz / harmonic;
-      }
-    }
-
-    if (bestFundamental == null) return null;
-    return bestFundamental.clamp(minHz, maxHz);
-  }
-
-  bool _hasLowStringHarmonicSupport(
-    List<double> magnitudes,
-    double fundamentalHz, {
-    required int minBin,
-    required int maxBin,
-    required double binWidth,
-  }) {
-    final h1 = _neighborhoodPeak(
-      magnitudes,
-      fundamentalHz,
-      halfWidthHz: 8,
-      minBin: minBin,
-      maxBin: maxBin,
-      binWidth: binWidth,
-    );
-    final h2 = _neighborhoodPeak(
-      magnitudes,
-      fundamentalHz * 2,
-      halfWidthHz: 10,
-      minBin: minBin,
-      maxBin: maxBin,
-      binWidth: binWidth,
-    );
-    final h3 = _neighborhoodPeak(
-      magnitudes,
-      fundamentalHz * 3,
-      halfWidthHz: 12,
-      minBin: minBin,
-      maxBin: maxBin,
-      binWidth: binWidth,
-    );
-    final series = h1 + h2 * 0.75 + h3 * 0.5;
-    return series > 0 && (h2 > h1 * 0.2 || h3 > h1 * 0.15 || h1 > 0);
-  }
-
-  double? _rebuildLowFundamentalFromHarmonics(
-    List<double> magnitudes,
-    double observedHz, {
-    required int minBin,
-    required int maxBin,
-    required double binWidth,
-  }) {
-    // Try interpreting the observed peak as H2 or H3 of a low open string.
-    for (final harmonic in [2, 3]) {
-      final candidate = observedHz / harmonic;
-      if (candidate < minHz || candidate >= 160) continue;
-      if (_hasLowStringHarmonicSupport(
-        magnitudes,
-        candidate,
-        minBin: minBin,
-        maxBin: maxBin,
-        binWidth: binWidth,
-      )) {
-        return candidate;
-      }
-    }
-    return null;
-  }
-
-  double _refineBinToHz(
-    List<double> magnitudes,
-    int bestBin,
-    double binWidth,
-  ) {
-    var refinedBin = bestBin.toDouble();
-    if (bestBin > 0 && bestBin < magnitudes.length - 1) {
-      final y0 = magnitudes[bestBin - 1];
-      final y1 = magnitudes[bestBin];
-      final y2 = magnitudes[bestBin + 1];
-      final denom = y0 - 2 * y1 + y2;
-      if (denom.abs() > 1e-12) {
-        refinedBin = bestBin + (y0 - y2) / (2 * denom);
-      }
-    }
-    return refinedBin * binWidth;
-  }
-
-  double _neighborhoodPeak(
-    List<double> magnitudes,
-    double hz, {
-    required double halfWidthHz,
-    required int minBin,
-    required int maxBin,
-    required double binWidth,
-  }) {
-    final candidateBin = hzToBin(hz, fftSize, sampleRate.toDouble());
-    final halfWidth = max(1, (halfWidthHz / binWidth).ceil());
-    final start = max(minBin, candidateBin - halfWidth);
-    final end = min(maxBin, candidateBin + halfWidth);
-    var peak = 0.0;
-    for (var b = start; b <= end; b++) {
-      peak = max(peak, magnitudes[b]);
-    }
-    return peak;
-  }
-
-  /// Nearest catalog open string within [maxSemitones], else null.
-  (int stringNumber, int openMidi, String name)? _closestOpenStringWithin(
-    double midiFloat, {
-    required double maxSemitones,
-  }) {
-    if (_openStrings.isEmpty) return null;
-
-    var best = _openStrings.first;
-    var bestDiff = (midiFloat - best.$2).abs();
-    for (final s in _openStrings) {
-      final diff = (midiFloat - s.$2).abs();
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        best = s;
-      }
-    }
-    if (bestDiff > maxSemitones) return null;
-    return best;
-  }
-
-  static const _names = [
-    'C',
-    'C#',
-    'D',
-    'D#',
-    'E',
-    'F',
-    'F#',
-    'G',
-    'G#',
-    'A',
-    'A#',
-    'B',
-  ];
-
-  static String _midiToNoteName(int midi) {
-    final name = _names[midi % 12];
-    final octave = (midi ~/ 12) - 1;
-    return '$name$octave';
   }
 }

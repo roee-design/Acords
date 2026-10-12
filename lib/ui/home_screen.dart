@@ -7,6 +7,7 @@ import 'navigation/app_page_route.dart';
 import 'practice_screen.dart';
 import 'strumming_learning_screen.dart';
 import 'widgets/help_sheet.dart';
+import 'widgets/progress_card.dart';
 
 /// Entry point for choosing a practice mode.
 class HomeScreen extends StatelessWidget {
@@ -83,6 +84,8 @@ class HomeScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  ProgressCard(catalog: catalog),
+                  const SizedBox(height: 20),
                   const Text(
                     'בחר מצב אימון',
                     style: TextStyle(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/chord_definition.dart';
 import '../models/song_definition.dart';
 import '../services/song_catalog_service.dart';
+import '../services/progress_service.dart';
 import 'app_theme.dart';
 import 'navigation/app_page_route.dart';
 import 'song_player_screen.dart';
@@ -214,6 +215,30 @@ class _SongPracticeScreenState extends State<SongPracticeScreen> {
                             color: AppColors.textMuted,
                             fontSize: 12,
                           ),
+                        ),
+                        ListenableBuilder(
+                          listenable: ProgressService.instance,
+                          builder: (context, _) {
+                            final p = ProgressService.instance.song(song.id);
+                            if (p.completions == 0 && p.guidedStep == 0) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 3),
+                              child: Text(
+                                p.isCompleted
+                                    ? '✓ נוגן עד הסוף${p.completions > 1 ? ' ×${p.completions}' : ''}'
+                                    : 'מסלול מודרך: שלב ${p.guidedStep}/3 הושלם',
+                                style: TextStyle(
+                                  color: p.isCompleted
+                                      ? AppColors.success
+                                      : AppColors.amberBright,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

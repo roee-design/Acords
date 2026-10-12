@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../audio/chord_audio_service.dart';
 import '../models/chord_definition.dart';
+import '../services/progress_service.dart';
 import 'app_theme.dart';
 import 'widgets/chord_fretboard_chart.dart';
 import 'widgets/help_sheet.dart';
+import 'widgets/mastery_badge.dart';
 
 /// Chord catalog grid, filtered by difficulty / technique level.
 class ChordLibraryScreen extends StatefulWidget {
@@ -123,13 +125,22 @@ class _DifficultyChordGrid extends StatelessWidget {
       );
     }
 
+    return ListenableBuilder(
+      listenable: ProgressService.instance,
+      builder: (context, _) => _buildGrid(context),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context) {
+    final progress = ProgressService.instance;
+    final learned = progress.startedCount(chords.map((c) => c.id));
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
             child: Text(
-              category,
+              '$category · נוגנו $learned/${chords.length}',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textMuted,
@@ -278,6 +289,11 @@ class _ChordGridCardState extends State<_ChordGridCard>
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      MasteryStars(
+                        mastery: ProgressService.instance.masteryOf(chord.id),
+                        size: 12,
                       ),
                       IconButton(
                         tooltip: 'השמע אקורד',
@@ -438,6 +454,26 @@ class _ChordDetailSheet extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      MasteryStars(
+                        mastery: ProgressService.instance.masteryOf(chord.id),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          chordProgressSubtitle(
+                            ProgressService.instance.chord(chord.id),
+                          ),
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   ChordFretboardFrame(

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../audio/audio_analyzer.dart';
 import '../audio/mic_capture_guard.dart';
 import '../audio/strum_preview_service.dart';
+import '../services/progress_service.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import '../models/strumming_pattern.dart';
@@ -126,12 +127,25 @@ class _StrummingLearningScreenState extends State<StrummingLearningScreen> {
                           ),
                         ),
                       ),
-                      Text(
-                        '${pattern.defaultBpm} BPM',
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                        ),
+                      ListenableBuilder(
+                        listenable: ProgressService.instance,
+                        builder: (context, _) {
+                          final stage =
+                              ProgressService.instance.strumStage(pattern.id);
+                          return Text(
+                            stage == 0
+                                ? '${pattern.defaultBpm} BPM'
+                                : stage >= 3
+                                    ? '✓ ${pattern.defaultBpm} BPM'
+                                    : 'שלב $stage/3 · ${pattern.defaultBpm} BPM',
+                            style: TextStyle(
+                              color: stage >= 3
+                                  ? AppColors.success
+                                  : AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -181,7 +195,6 @@ class _PatternGuidedPathScreen extends StatefulWidget {
 class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
   static const int _fftSize = 8192;
   static const int _sampleRate = 44100;
-  static const Duration _grace = Duration(milliseconds: 300);
 
   final AudioAnalyzer _analyzer = AudioAnalyzer(
     sampleRate: _sampleRate,
@@ -189,11 +202,12 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
   );
 
   StreamSubscription<ChordFeedback>? _feedbackSub;
+  StreamSubscription<ChordHit>? _hitSub;
+  var _loopHits = 0;
   var _step = _Step.transitions;
   var _listening = false;
   var _busy = false;
   var _lifecycleEpoch = 0;
-  var _wasPerfect = false;
   var _chordIndex = 0;
   var _strokeIndex = 0;
   var _bpmFactor = 0.6;
@@ -211,12 +225,14 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
         ? widget.pattern.practiceChordIds
         : const ['g_major', 'c_major', 'd_major', 'g_major'];
     _feedbackSub = _analyzer.feedbackStream.listen(_onFeedback);
+    _hitSub = _analyzer.hitStream.listen(_onHit);
     unawaited(StrumPreviewService.instance.ensureReady());
   }
 
   @override
   void dispose() {
     _feedbackSub?.cancel();
+    _hitSub?.cancel();
     _lifecycleEpoch++;
     unawaited(StrumPreviewService.instance.stop());
     unawaited(_analyzer.stop());
@@ -241,7 +257,6 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
       _listening = false;
       _busy = false;
       _previewPlaying = false;
-      _wasPerfect = false;
       _strokeIndex = 0;
     });
   }
@@ -252,7 +267,7 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
       _step = step;
       _chordIndex = 0;
       _strokeIndex = 0;
-      _wasPerfect = false;
+      _loopHits = 0;
       _errorMessage = null;
       _feedback = null;
       if (step == _Step.gradual) {
@@ -270,7 +285,6 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
       _busy = true;
       _errorMessage = null;
       _chordIndex = 0;
-      _wasPerfect = false;
     });
     try {
       await MicCaptureGuard.instance.claim(this, _stopAll);
@@ -338,21 +352,38 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
 
   void _onFeedback(ChordFeedback feedback) {
     if (!mounted || !_listening) return;
-    if (_analyzer.isBlanking) return;
-    final isPerfect = feedback.matchStatus == ChordMatchStatus.perfect;
     setState(() => _feedback = feedback);
+  }
 
+  void _onHit(ChordHit hit) {
+    if (!mounted || !_listening) return;
+    if (hit.chordId != _analyzer.targetChordId) return;
+    ProgressService.instance.recordChordHit(hit.chordId);
     if (_step == _Step.transitions || _step == _Step.gradual) {
-      if (isPerfect && !_wasPerfect) {
-        _advanceChord();
+      _advanceChord();
+    } else if (_step == _Step.loop) {
+      _loopHits++;
+      if (_loopHits >= 8) {
+        ProgressService.instance.recordStrumStage(widget.pattern.id, 3);
+      }
+      // Cycle through the practice chords while looping.
+      _chordIndex = (_chordIndex + 1) % _chordIds.length;
+      final def = widget.chordCatalog.chordById(_chordIds[_chordIndex]);
+      if (def != null) {
+        setState(() {});
+        _analyzer.setTargetChord(
+          def,
+          referenceA4Hz: widget.chordCatalog.referenceA4Hz,
+          resetAnalysis: false,
+        );
       }
     }
-    _wasPerfect = isPerfect;
   }
 
   void _advanceChord() {
     if (_chordIndex >= _chordIds.length - 1) {
       if (_step == _Step.transitions) {
+        ProgressService.instance.recordStrumStage(widget.pattern.id, 1);
         unawaited(_stopAll());
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -371,14 +402,12 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
     }
     setState(() {
       _chordIndex += 1;
-      _wasPerfect = false;
     });
     final def = widget.chordCatalog.chordById(_chordIds[_chordIndex]);
     if (def != null) {
       _analyzer.setTargetChord(
         def,
         referenceA4Hz: widget.chordCatalog.referenceA4Hz,
-        gracePeriod: _grace,
       );
     }
   }
@@ -387,9 +416,9 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
     setState(() {
       _successfulRounds += 1;
       _chordIndex = 0;
-      _wasPerfect = false;
     });
     if (_bpmFactor >= 0.98) {
+      ProgressService.instance.recordStrumStage(widget.pattern.id, 2);
       unawaited(_stopAll());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -407,7 +436,6 @@ class _PatternGuidedPathScreenState extends State<_PatternGuidedPathScreen> {
       _analyzer.setTargetChord(
         def,
         referenceA4Hz: widget.chordCatalog.referenceA4Hz,
-        gracePeriod: _grace,
       );
     }
     unawaited(() async {

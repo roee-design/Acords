@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'models/chord_definition.dart';
 import 'services/chord_catalog_service.dart';
+import 'services/progress_service.dart';
 import 'ui/app_theme.dart';
 import 'ui/main_shell.dart';
 
@@ -68,6 +69,7 @@ class _AppBootstrapState extends State<_AppBootstrap> {
   Future<void> _loadCatalog() async {
     try {
       final catalog = await _catalogService.load();
+      await ProgressService.instance.load();
       if (mounted) {
         setState(() => _catalog = catalog);
       }
