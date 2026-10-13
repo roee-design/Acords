@@ -137,7 +137,7 @@ class HomeScreen extends StatelessWidget {
                     accentColor: const Color(0xFFA78BFA),
                     title: 'לימוד פריטות',
                     description:
-                        '6 דפוסים מרכזיים במסלול מודרך: מעברים → קצב → לולאה',
+                        '11 דפוסים במסלול מודרך: מעברים → קצב → לולאה',
                     badge: 'חדש',
                     onTap: () {
                       Navigator.of(context).push(

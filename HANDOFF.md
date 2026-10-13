@@ -43,6 +43,7 @@
 
 | תאריך | סוג | נתיב APK | מה נכנס לבנייה |
 |--------|-----|----------|----------------|
+| 2026-10-13 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: **תיקון קריסה בפתיחה (שוב)** — `MainActivity.kt` לא היה בגיט כי הכלל `chord_trainer/` ב־`.gitignore` תפס גם את `android/app/src/main/kotlin/com/chordtrainer/chord_trainer/`; הכלל עוגן ל־`/chord_trainer/` והקובץ נוסף. אומת ב־BlueStacks (מופע `Pie64_1`). טקסט כרטיס פריטות: 11 דפוסים |
 | 2026-10-12 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: **מנוע זיהוי חדש** (`ChordDetectionEngine` + `OnsetDetector` + `ChordMatcher` יחסי עם דחיית צליל זר) — פגיעה דורשת פריטה חדשה; **טיונר YIN+חידוד ספקטרלי**; **`ProgressService`** + כרטיס התקדמות/כוכבים/תגיות; +22 אקורדים, +8 שירים PD, +5 דפוסים; בדיקות `test/` + ספסל סינתטי `test/bench` |
 | 2026-09-25 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: ארכיטקטורה — טאב «שירים»; לימוד פריטות (6 דפוסים + 3 שלבים); `StrumPreviewService` mediaPlayer+WAV+ארפג׳ו; תיבות ריקות ל־instrumental |
 | 2026-09-25 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: שירים — מסלול מודרך 3 שלבים + נגן חופשי; תיקון `StrumPreviewService` (טיקים ↓/↑/✕); `songs.json` PD + instrumental; RTL+LTR; תיקון פרמטר `activeSegment` ב־`SongLyricLineView` |

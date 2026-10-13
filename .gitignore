@@ -49,7 +49,7 @@ app.*.map.json
 .vscode/
 
 # Nested/legacy copy + vendored Flutter SDK (main app is at repo root)
-chord_trainer/
+/chord_trainer/
 
 # Built APKs / release artifacts
 releases/
