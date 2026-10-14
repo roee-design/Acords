@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 
 import '../models/feedback_result.dart';
 
-/// Shared dark palette — deep slate base with turquoise + amber accents.
+/// Shared dark palette — deep indigo base with turquoise, amber, violet and
+/// pink accents (livelier than the original slate).
 abstract final class AppColors {
-  static const background = Color(0xFF0B1220);
-  static const surface = Color(0xFF162032);
-  static const surfaceElevated = Color(0xFF1E2D45);
+  static const background = Color(0xFF0E1230);
+  static const surface = Color(0xFF181D45);
+  static const surfaceElevated = Color(0xFF222A5C);
+  static const violet = Color(0xFFA78BFA);
+  static const pink = Color(0xFFF472B6);
+  static const sky = Color(0xFF38BDF8);
   static const turquoise = Color(0xFF2DD4BF);
   static const turquoiseDim = Color(0xFF14B8A6);
   static const amber = Color(0xFFF59E0B);
@@ -33,7 +37,8 @@ abstract final class AppTheme {
           onSurface: AppColors.textPrimary,
           onSurfaceVariant: AppColors.textMuted,
           error: AppColors.error,
-          outlineVariant: Color(0xFF334155),
+          tertiary: AppColors.violet,
+          outlineVariant: Color(0xFF3A4380),
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.background,
@@ -137,13 +142,37 @@ abstract final class AppTheme {
 
   /// Decorative gradient used on hero headers.
   static LinearGradient get heroGradient => const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF3B2A7A),
+          Color(0xFF1E2A6B),
+          AppColors.background,
+        ],
+        stops: [0, 0.55, 1],
+      );
+
+  /// Background of the rhythm game.
+  static LinearGradient get gameGradient => const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFF132035),
-          AppColors.background,
+          Color(0xFF2A1B5E),
+          Color(0xFF16205A),
+          Color(0xFF0B2A44),
         ],
       );
+
+  /// Colour + icon per song genre id.
+  static (Color, IconData) genreStyle(String genre) => switch (genre) {
+        'jewish' => (AppColors.sky, Icons.star_rounded),
+        'kids' => (AppColors.amberBright, Icons.child_care_rounded),
+        'folk' => (AppColors.turquoise, Icons.landscape_rounded),
+        'spiritual' => (AppColors.violet, Icons.church_rounded),
+        'holiday' => (AppColors.pink, Icons.celebration_rounded),
+        'pop_rock' => (AppColors.error, Icons.electric_bolt_rounded),
+        _ => (AppColors.textMuted, Icons.music_note_rounded),
+      };
 
   static BoxDecoration cardDecoration({Color? borderColor}) => BoxDecoration(
         color: AppColors.surfaceElevated,

@@ -116,6 +116,9 @@ class ProgressService extends ChangeNotifier {
   final Map<String, ChordProgress> _chords = {};
   final Map<String, SongProgress> _songs = {};
   final Map<String, int> _strumStages = {};
+  final Map<String, int> _gameStars = {};
+  final Map<String, int> _gameScores = {};
+  final Map<String, int> _calibration = {};
   final Set<String> _practiceDays = {};
   int? _lastDifficulty;
   String? _lastChordId;
@@ -149,10 +152,17 @@ class ProgressService extends ChangeNotifier {
     for (final e in songs.entries) {
       _songs[e.key] = SongProgress.fromJson(e.value as Map<String, dynamic>);
     }
-    final strum = json['strum'] as Map<String, dynamic>? ?? const {};
-    for (final e in strum.entries) {
-      _strumStages[e.key] = (e.value as num).toInt();
+    void readInts(String key, Map<String, int> into) {
+      final m = json[key] as Map<String, dynamic>? ?? const {};
+      for (final e in m.entries) {
+        into[e.key] = (e.value as num).toInt();
+      }
     }
+
+    readInts('strum', _strumStages);
+    readInts('gameStars', _gameStars);
+    readInts('gameScores', _gameScores);
+    readInts('calibration', _calibration);
     _practiceDays.addAll([
       for (final d in (json['days'] as List<dynamic>? ?? const [])) d as String,
     ]);
@@ -164,6 +174,9 @@ class ProgressService extends ChangeNotifier {
         'chords': {for (final e in _chords.entries) e.key: e.value.toJson()},
         'songs': {for (final e in _songs.entries) e.key: e.value.toJson()},
         'strum': _strumStages,
+        'gameStars': _gameStars,
+        'gameScores': _gameScores,
+        'calibration': _calibration,
         'days': _practiceDays.toList(),
         if (_lastDifficulty != null) 'lastLevel': _lastDifficulty,
         if (_lastChordId != null) 'lastChord': _lastChordId,
@@ -282,6 +295,32 @@ class ProgressService extends ChangeNotifier {
     _changed();
   }
 
+  // --- Rhythm game ---------------------------------------------------------
+
+  /// Best stars (0–3) for a game run, keyed e.g. `pattern:basic_44:2` or
+  /// `song:amazing_grace`.
+  int gameStars(String key) => _gameStars[key] ?? 0;
+
+  int gameBestScore(String key) => _gameScores[key] ?? 0;
+
+  /// Stores a finished run; returns true when it is a new best score.
+  bool recordGameResult(String key, {required int stars, required int score}) {
+    final newBest = score > gameBestScore(key);
+    if (stars > gameStars(key)) _gameStars[key] = stars;
+    if (newBest) _gameScores[key] = score;
+    _markPracticeDay();
+    _changed();
+    return newBest;
+  }
+
+  /// Latency correction (ms) learned from the count-in, per input mode.
+  int calibrationMs(String mode) => _calibration[mode] ?? (mode == 'mic' ? 90 : 0);
+
+  void setCalibrationMs(String mode, int ms) {
+    _calibration[mode] = ms;
+    _changed();
+  }
+
   // --- Streak ------------------------------------------------------------------
 
   /// Consecutive practice days ending today (or yesterday, so the streak is
@@ -309,6 +348,9 @@ class ProgressService extends ChangeNotifier {
     _chords.clear();
     _songs.clear();
     _strumStages.clear();
+    _gameStars.clear();
+    _gameScores.clear();
+    _calibration.clear();
     _practiceDays.clear();
     _lastDifficulty = null;
     _lastChordId = null;

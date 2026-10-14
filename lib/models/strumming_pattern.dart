@@ -147,6 +147,7 @@ class StrummingPattern {
     this.description = '',
     this.defaultBpm = 80,
     this.practiceChordIds = const [],
+    this.exampleSongId,
   });
 
   final String id;
@@ -164,6 +165,9 @@ class StrummingPattern {
 
   /// Chord ids from the catalog used in the guided path.
   final List<String> practiceChordIds;
+
+  /// Song practised with this pattern at the end of the lesson.
+  final String? exampleSongId;
 
   /// One entry per subdivision slot across the bar.
   final List<PatternEvent> events;
@@ -205,6 +209,7 @@ class StrummingPattern {
           (json['defaultBpm'] as num?)?.toInt() ??
           80,
       practiceChordIds: practice,
+      exampleSongId: json['exampleSongId'] as String?,
       events: events,
     );
   }

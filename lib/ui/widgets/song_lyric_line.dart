@@ -25,6 +25,41 @@ class SongLyricLineView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final section = line.section;
+    final body = _buildLine();
+    if (section == null) return body;
+    final isChorus = section.contains('פזמון');
+    final color = isChorus ? AppColors.pink : AppColors.violet;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: rtl ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.only(top: 6, bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              section,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        body,
+      ],
+    );
+  }
+
+  Widget _buildLine() {
     if (instrumental) {
       return _InstrumentalBars(
         line: line,

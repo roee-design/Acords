@@ -13,7 +13,8 @@
         "d_major",
         "g_major"
       ],
-      "strokes": "↓ ↓ ↓ ↓"
+      "strokes": "↓ ↓ ↓ ↓",
+      "exampleSongId": "saints_marching"
     },
     {
       "id": "pop_rock_8",
@@ -28,7 +29,8 @@
         "a_minor",
         "f_major"
       ],
-      "strokes": "↓ - ↓ ↑ - ↑ ↓ ↑"
+      "strokes": "↓ - ↓ ↑ - ↑ ↓ ↑",
+      "exampleSongId": "hine_ma_tov"
     },
     {
       "id": "waltz_34",
@@ -43,7 +45,8 @@
         "f_major",
         "g_major"
       ],
-      "strokes": "↓ ↓ ↓"
+      "strokes": "↓ ↓ ↓",
+      "exampleSongId": "happy_birthday"
     },
     {
       "id": "island_mute",
@@ -58,7 +61,8 @@
         "e_minor",
         "d_major"
       ],
-      "strokes": "↓ ↓ ✕ ↑ ↓ ↑ ↓ ↑"
+      "strokes": "↓ ↓ ✕ ↑ ↓ ↑ ↓ ↑",
+      "exampleSongId": "let_it_be"
     },
     {
       "id": "ballad_soft",
@@ -73,7 +77,8 @@
         "d_major",
         "g_major"
       ],
-      "strokes": "↓ - ↓ ↑ - ↑ ↓ -"
+      "strokes": "↓ - ↓ ↑ - ↑ ↓ -",
+      "exampleSongId": "shalom_aleichem"
     },
     {
       "id": "arpeggio_pima",
@@ -88,7 +93,8 @@
         "f_major",
         "g_major"
       ],
-      "strokes": "p i m a i m a i"
+      "strokes": "p i m a i m a i",
+      "exampleSongId": "scarborough_fair"
     },
     {
       "id": "boom_chick_44",
@@ -103,7 +109,8 @@
         "d_7",
         "g_major"
       ],
-      "strokes": "p ↓ p ↓"
+      "strokes": "p ↓ p ↓",
+      "exampleSongId": "oh_susanna"
     },
     {
       "id": "waltz_bass_34",
@@ -118,7 +125,8 @@
         "g_major",
         "c_major"
       ],
-      "strokes": "p ↓ ↓"
+      "strokes": "p ↓ ↓",
+      "exampleSongId": "clementine"
     },
     {
       "id": "offbeat_reggae",
@@ -133,7 +141,8 @@
         "e_minor",
         "a_minor"
       ],
-      "strokes": "- ↓ - ↓ - ↓ - ↓"
+      "strokes": "- ↓ - ↓ - ↓ - ↓",
+      "exampleSongId": "david_melech"
     },
     {
       "id": "ballad_68",
@@ -148,7 +157,8 @@
         "f_major",
         "g_major"
       ],
-      "strokes": "↓ - ↑ ↓ - ↑"
+      "strokes": "↓ - ↑ ↓ - ↑",
+      "exampleSongId": "house_rising_sun"
     },
     {
       "id": "folk_arpeggio",
@@ -163,7 +173,8 @@
         "c_major",
         "d_major"
       ],
-      "strokes": "p i m i p i m i"
+      "strokes": "p i m i p i m i",
+      "exampleSongId": "red_river_valley"
     }
   ]
 }

@@ -70,6 +70,17 @@ void main() {
       for (final id in p.practiceChordIds) {
         expect(catalog.chordById(id), isNotNull, reason: '${p.id}: $id');
       }
+      final example = p.exampleSongId;
+      expect(example, isNotNull, reason: '${p.id} has no example song');
+      expect(songs.byId(example!), isNotNull, reason: '${p.id}: $example');
+    }
+  });
+
+  test('songs have a language and a known genre', () {
+    for (final song in songs.songs) {
+      expect(['he', 'en'], contains(song.language), reason: song.id);
+      expect(SongGenres.labels.keys, contains(song.genre), reason: song.id);
+      expect(song.isHebrew, song.rtl, reason: '${song.id}: language vs rtl');
     }
   });
 

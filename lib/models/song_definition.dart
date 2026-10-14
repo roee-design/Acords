@@ -23,16 +23,36 @@ class SongChordLyric {
 
 /// One display line of the song (several chord+lyric segments).
 class SongLine {
-  const SongLine({required this.segments});
+  const SongLine({required this.segments, this.section});
 
   final List<SongChordLyric> segments;
+
+  /// Section label starting at this line ("בית 1", "פזמון"), if any.
+  final String? section;
+
+  /// Lyrics of the whole line.
+  String get text => segments.map((s) => s.lyrics).join();
 
   factory SongLine.fromJson(Map<String, dynamic> json) {
     final segs = (json['segments'] as List<dynamic>? ?? const [])
         .map((e) => SongChordLyric.fromJson(e as Map<String, dynamic>))
         .toList();
-    return SongLine(segments: segs);
+    return SongLine(segments: segs, section: json['section'] as String?);
   }
+}
+
+/// Song genres (ids in songs.json) with Hebrew labels, in display order.
+abstract final class SongGenres {
+  static const Map<String, String> labels = {
+    'jewish': 'יהודי ומסורת',
+    'kids': 'ילדים',
+    'folk': 'עממי ופולק',
+    'spiritual': 'גוספל וספיריטואל',
+    'holiday': 'חגים',
+    'pop_rock': 'פופ ורוק',
+  };
+
+  static String labelFor(String id) => labels[id] ?? 'אחר';
 }
 
 /// Full song definition for strumming / lyrics practice.
@@ -48,6 +68,8 @@ class SongDefinition {
     this.instrumental = false,
     this.rtl = false,
     this.publicDomain = false,
+    this.language = 'en',
+    this.genre = 'folk',
   });
 
   final String id;
@@ -71,6 +93,22 @@ class SongDefinition {
 
   /// Lyrics are public-domain source text (safe to ship verbatim).
   final bool publicDomain;
+
+  /// 'he' or 'en'.
+  final String language;
+
+  /// Genre id, see [SongGenres].
+  final String genre;
+
+  bool get isHebrew => language == 'he';
+
+  /// Lowercase text used by library search (title, artist, genre, lyrics).
+  String get searchText => [
+        title,
+        artist,
+        SongGenres.labelFor(genre),
+        for (final l in lines) l.text,
+      ].join(' ').toLowerCase();
 
   /// Flat list of chord ids in play order (skips null / empty).
   List<String> get chordSequence {
@@ -119,6 +157,9 @@ class SongDefinition {
       instrumental: json['instrumental'] as bool? ?? false,
       rtl: json['rtl'] as bool? ?? false,
       publicDomain: json['publicDomain'] as bool? ?? false,
+      language: json['language'] as String? ??
+          ((json['rtl'] as bool? ?? false) ? 'he' : 'en'),
+      genre: json['genre'] as String? ?? 'folk',
     );
   }
 }

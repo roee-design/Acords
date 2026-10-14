@@ -9,7 +9,10 @@ import '../services/progress_service.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import '../models/song_definition.dart';
+import '../game/rhythm_chart.dart';
 import 'app_theme.dart';
+import 'navigation/app_page_route.dart';
+import 'rhythm_game_screen.dart';
 import 'widgets/song_lyric_line.dart';
 import 'widgets/strumming_help_sheet.dart';
 import 'widgets/strumming_pattern_widget.dart';
@@ -235,6 +238,32 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
     });
   }
 
+  /// Plays this song in the rhythm game (its own pattern, lyrics on screen).
+  Future<void> _openGame() async {
+    if (_listening) await _stopListening();
+    if (_previewPlaying) await _togglePreview();
+    if (!mounted) return;
+    final song = widget.song;
+    final stars = await Navigator.of(context).push<int>(
+      AppPageRoute<int>(
+        page: RhythmGameScreen(
+          title: song.title,
+          subtitle: song.artist,
+          chart: RhythmChart.forSong(
+            song: song,
+            pattern: song.pattern,
+            bpm: song.bpm,
+          ),
+          chordCatalog: widget.chordCatalog,
+          progressKey: 'song:${song.id}',
+        ),
+      ),
+    );
+    if (stars != null && stars > 0) {
+      ProgressService.instance.recordSongCompleted(song.id);
+    }
+  }
+
   Future<void> _togglePreview() async {
     final preview = StrumPreviewService.instance;
     if (_previewPlaying) {
@@ -350,6 +379,19 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
                           color: AppColors.turquoise,
                         ),
                         Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => unawaited(_openGame()),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.pink,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            icon: const Icon(Icons.sports_esports_rounded),
+                            label: const Text('משחק קצב'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () => unawaited(_togglePreview()),
                             icon: Icon(
@@ -360,7 +402,7 @@ class _SongPlayerScreenState extends State<SongPlayerScreen> {
                             label: Text(
                               _previewPlaying
                                   ? 'עצור השמעה'
-                                  : 'השמע פריטה לדוגמה',
+                                  : 'השמע פריטה',
                             ),
                           ),
                         ),

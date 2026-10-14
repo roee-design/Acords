@@ -31,7 +31,8 @@
               "chordId": "g_major",
               "lyrics": "sound"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
@@ -45,7 +46,7 @@
             },
             {
               "chordId": "g_major",
-              "lyrics": "me"
+              "lyrics": "me!"
             }
           ]
         },
@@ -61,7 +62,7 @@
             },
             {
               "chordId": "g_major",
-              "lyrics": "now am found"
+              "lyrics": "now am found;"
             }
           ]
         },
@@ -77,11 +78,208 @@
             },
             {
               "chordId": "g_major",
-              "lyrics": "see"
+              "lyrics": "see."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "'Twas grace that "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "taught my heart to "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "fear,"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "And grace my "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "fears re"
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "lieved;"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "How precious "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "did that grace "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "appear"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "The hour I "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "first be"
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "lieved!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Through many "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "dangers, toils and "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "snares,"
+            }
+          ],
+          "section": "בית 3"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "I have al"
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "ready "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "come;"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "'Tis grace hath "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "brought me safe thus "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "far,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "And grace will "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "lead me "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "home."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "When we've been "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "there ten thousand "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "years,"
+            }
+          ],
+          "section": "בית 4"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Bright shining "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "as the "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sun,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "We've no less "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "days to sing God's "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "praise"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Than when we'd "
+            },
+            {
+              "chordId": "d_major",
+              "lyrics": "first be"
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "gun."
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "spiritual"
     },
     {
       "id": "hine_ma_tov",
@@ -148,7 +346,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "he",
+      "genre": "jewish"
     },
     {
       "id": "yonatan_katan",
@@ -215,7 +415,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "he",
+      "genre": "kids"
     },
     {
       "id": "shalom_aleichem",
@@ -244,7 +446,143 @@
               "chordId": "d_minor",
               "lyrics": "מלאכי השרת"
             }
+          ],
+          "section": "בית 1"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "מלאכי עליון"
+            }
           ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "ממלך מלכי "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "המלכים"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "e_major",
+              "lyrics": "הקדוש "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "ברוך הוא"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "בואכם לשלום "
+            },
+            {
+              "chordId": "d_minor",
+              "lyrics": "מלאכי השלום"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "מלאכי עליון"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "ממלך מלכי "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "המלכים"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "e_major",
+              "lyrics": "הקדוש "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "ברוך הוא"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "ברכוני לשלום "
+            },
+            {
+              "chordId": "d_minor",
+              "lyrics": "מלאכי השלום"
+            }
+          ],
+          "section": "בית 3"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "מלאכי עליון"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "ממלך מלכי "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "המלכים"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "e_major",
+              "lyrics": "הקדוש "
+            },
+            {
+              "chordId": "a_minor",
+              "lyrics": "ברוך הוא"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "צאתכם לשלום "
+            },
+            {
+              "chordId": "d_minor",
+              "lyrics": "מלאכי השלום"
+            }
+          ],
+          "section": "בית 4"
         },
         {
           "segments": [
@@ -278,7 +616,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "he",
+      "genre": "jewish"
     },
     {
       "id": "hatikvah",
@@ -345,7 +685,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "he",
+      "genre": "jewish"
     },
     {
       "id": "scarborough_fair",
@@ -374,7 +716,8 @@
               "chordId": "g_major",
               "lyrics": "Scarborough Fair?"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
@@ -384,7 +727,7 @@
             },
             {
               "chordId": "e_major",
-              "lyrics": "rosemary and thyme"
+              "lyrics": "rosemary and thyme;"
             }
           ]
         },
@@ -396,7 +739,7 @@
             },
             {
               "chordId": "g_major",
-              "lyrics": "one who lives there"
+              "lyrics": "one who lives there,"
             }
           ]
         },
@@ -404,15 +747,115 @@
           "segments": [
             {
               "chordId": "a_minor",
-              "lyrics": "She once was a "
+              "lyrics": "For she once was a "
             },
             {
               "chordId": "e_major",
-              "lyrics": "true love of mine"
+              "lyrics": "true love of mine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Tell her to make me a "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "cambric shirt,"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Parsley, sage, "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "rosemary and thyme;"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Without no seams nor "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "needlework,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Then she'll be a "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "true love of mine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Tell her to find me an "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "acre of land,"
+            }
+          ],
+          "section": "בית 3"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Parsley, sage, "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "rosemary and thyme;"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Between the salt water and "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "the sea strand,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "a_minor",
+              "lyrics": "Then she'll be a "
+            },
+            {
+              "chordId": "e_major",
+              "lyrics": "true love of mine."
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "folk"
     },
     {
       "id": "house_rising_sun",
@@ -479,7 +922,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "folk"
     },
     {
       "id": "knockin_heaven",
@@ -538,7 +983,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "pop_rock"
     },
     {
       "id": "let_it_be",
@@ -597,7 +1044,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "pop_rock"
     },
     {
       "id": "oh_susanna",
@@ -630,7 +1079,8 @@
               "chordId": "g_major",
               "lyrics": "knee,"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
@@ -651,6 +1101,38 @@
         {
           "segments": [
             {
+              "chordId": "g_major",
+              "lyrics": "It rained all night the day I left, the "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "weather it was "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "dry,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "The sun so hot I froze to death; Su"
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "sanna, don't you "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "cry."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
               "chordId": "c_major",
               "lyrics": "Oh! Susanna, oh "
             },
@@ -662,13 +1144,112 @@
               "chordId": "d_7",
               "lyrics": "me,"
             }
+          ],
+          "section": "פזמון"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "For I come from Alabama with my "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "banjo on my "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "knee."
+            }
           ]
         },
         {
           "segments": [
             {
               "chordId": "g_major",
-              "lyrics": "for I come from Alabama with my "
+              "lyrics": "I had a dream the other night when "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "everything was "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "still;"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "I thought I saw Susanna a-"
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "coming down the "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "hill."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "The buckwheat cake was in her mouth, the "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "tear was in her "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "eye;"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Says I, I'm coming from the south, Su"
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "sanna, don't you "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "cry."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Oh! Susanna, oh "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "don't you cry for "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "me,"
+            }
+          ],
+          "section": "פזמון"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "For I come from Alabama with my "
             },
             {
               "chordId": "d_7",
@@ -680,7 +1261,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "folk"
     },
     {
       "id": "saints_marching",
@@ -705,7 +1288,8 @@
               "chordId": "g_major",
               "lyrics": "Oh when the saints go marching in,"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
@@ -746,8 +1330,157 @@
               "lyrics": "in."
             }
           ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh when the sun refuse to shine,"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "oh when the sun refuse to "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "shine,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Lord, how I want to be in that "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "number,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "when the saints go "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "marching "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "in."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh when the moon turns red with blood,"
+            }
+          ],
+          "section": "בית 3"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "oh when the moon turns red with "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "blood,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Lord, how I want to be in that "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "number,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "when the saints go "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "marching "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "in."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh when the trumpet sounds its call,"
+            }
+          ],
+          "section": "בית 4"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "oh when the trumpet sounds its "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "call,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Lord, how I want to be in that "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "number,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "when the saints go "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "marching "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "in."
+            }
+          ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "spiritual"
     },
     {
       "id": "twinkle_star",
@@ -780,13 +1513,14 @@
               "chordId": "c_major",
               "lyrics": "star,"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
             {
               "chordId": "f_major",
-              "lyrics": "how I "
+              "lyrics": "How I "
             },
             {
               "chordId": "c_major",
@@ -826,7 +1560,7 @@
           "segments": [
             {
               "chordId": "c_major",
-              "lyrics": "like a "
+              "lyrics": "Like a "
             },
             {
               "chordId": "f_major",
@@ -862,7 +1596,233 @@
           "segments": [
             {
               "chordId": "f_major",
-              "lyrics": "how I "
+              "lyrics": "How I "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "wonder "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "what you "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "are!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "When the "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "blazing "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "sun is gone,"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "f_major",
+              "lyrics": "When he "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "nothing "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "shines up"
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "on,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Then you "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "show your "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "little "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "light,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Twinkle, "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "twinkle, "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "all the "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "night."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Twinkle, twinkle, "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "little "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "star,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "f_major",
+              "lyrics": "How I "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "wonder "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "what you "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "are!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Then the "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "traveller "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "in the dark"
+            }
+          ],
+          "section": "בית 3"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "f_major",
+              "lyrics": "Thanks you "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "for your "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "tiny "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "spark;"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "He could "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "not see "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "which way to "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "go,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "If you "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "did not "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "twinkle "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "so."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "c_major",
+              "lyrics": "Twinkle, twinkle, "
+            },
+            {
+              "chordId": "f_major",
+              "lyrics": "little "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "star,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "f_major",
+              "lyrics": "How I "
             },
             {
               "chordId": "c_major",
@@ -878,7 +1838,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "kids"
     },
     {
       "id": "happy_birthday",
@@ -949,7 +1911,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "kids"
     },
     {
       "id": "red_river_valley",
@@ -974,13 +1938,14 @@
               "chordId": "g_major",
               "lyrics": "From this valley they say you are going,"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
             {
               "chordId": "g_major",
-              "lyrics": "we will miss your bright eyes and sweet "
+              "lyrics": "We will miss your bright eyes and sweet "
             },
             {
               "chordId": "d_7",
@@ -992,7 +1957,7 @@
           "segments": [
             {
               "chordId": "d_7",
-              "lyrics": "for they say you are taking the sunshine"
+              "lyrics": "For they say you are taking the sunshine"
             }
           ]
         },
@@ -1000,7 +1965,7 @@
           "segments": [
             {
               "chordId": "d_7",
-              "lyrics": "that has brightened our pathway a "
+              "lyrics": "That has brightened our pathway a "
             },
             {
               "chordId": "g_major",
@@ -1014,13 +1979,14 @@
               "chordId": "g_major",
               "lyrics": "Come and sit by my side if you love me,"
             }
-          ]
+          ],
+          "section": "פזמון"
         },
         {
           "segments": [
             {
               "chordId": "g_major",
-              "lyrics": "do not hasten to bid me a"
+              "lyrics": "Do not hasten to bid me a"
             },
             {
               "chordId": "d_7",
@@ -1032,7 +1998,7 @@
           "segments": [
             {
               "chordId": "g_major",
-              "lyrics": "but remember the Red River "
+              "lyrics": "But remember the Red River "
             },
             {
               "chordId": "c_major",
@@ -1044,7 +2010,97 @@
           "segments": [
             {
               "chordId": "g_major",
-              "lyrics": "and the cowboy who "
+              "lyrics": "And the cowboy who "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "loved you so "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "true."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Won't you think of the valley you're leaving?"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh how lonely, how sad it will "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "be!"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "Oh think of the fond heart you're breaking,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "And the grief you are causing to "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "me."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Come and sit by my side if you love me,"
+            }
+          ],
+          "section": "פזמון"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Do not hasten to bid me a"
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "dieu,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "But remember the Red River "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "Valley"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "And the cowboy who "
             },
             {
               "chordId": "d_7",
@@ -1056,7 +2112,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "folk"
     },
     {
       "id": "jingle_bells",
@@ -1079,9 +2137,59 @@
           "segments": [
             {
               "chordId": "g_major",
-              "lyrics": "Jingle bells, jingle bells, jingle all the way!"
+              "lyrics": "Dashing through the snow in a "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "one-horse open sleigh,"
+            }
+          ],
+          "section": "בית"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "O'er the fields we go, "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "laughing all the way;"
             }
           ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Bells on bobtail ring, "
+            },
+            {
+              "chordId": "c_major",
+              "lyrics": "making spirits bright,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "What fun it is to ride and sing a "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "sleighing song tonight! Oh,"
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Jingle bells, jingle bells, jingle all the way!"
+            }
+          ],
+          "section": "פזמון"
         },
         {
           "segments": [
@@ -1131,7 +2239,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "holiday"
     },
     {
       "id": "clementine",
@@ -1160,13 +2270,14 @@
               "chordId": "d_7",
               "lyrics": "mine,"
             }
-          ]
+          ],
+          "section": "בית 1"
         },
         {
           "segments": [
             {
               "chordId": "d_7",
-              "lyrics": "dwelt a miner forty-niner, and his "
+              "lyrics": "Dwelt a miner forty-niner, and his "
             },
             {
               "chordId": "g_major",
@@ -1184,13 +2295,164 @@
               "chordId": "d_7",
               "lyrics": "Clementine,"
             }
-          ]
+          ],
+          "section": "פזמון"
         },
         {
           "segments": [
             {
               "chordId": "d_7",
-              "lyrics": "you are lost and gone forever, dreadful "
+              "lyrics": "You are lost and gone forever, dreadful "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sorry, Clementine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Light she was and like a fairy, and her shoes were number "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "nine,"
+            }
+          ],
+          "section": "בית 2"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "Herring boxes without topses, sandals "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "were for Clementine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh my darling, oh my darling, oh my darling "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "Clementine,"
+            }
+          ],
+          "section": "פזמון"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "You are lost and gone forever, dreadful "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sorry, Clementine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Drove she ducklings to the water every morning just at "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "nine,"
+            }
+          ],
+          "section": "בית 3"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "Hit her foot against a splinter, fell in"
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "to the foaming brine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh my darling, oh my darling, oh my darling "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "Clementine,"
+            }
+          ],
+          "section": "פזמון"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "You are lost and gone forever, dreadful "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "sorry, Clementine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Ruby lips above the water, blowing bubbles soft and "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "fine,"
+            }
+          ],
+          "section": "בית 4"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "But alas, I was no swimmer, so I "
+            },
+            {
+              "chordId": "g_major",
+              "lyrics": "lost my Clementine."
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "chordId": "g_major",
+              "lyrics": "Oh my darling, oh my darling, oh my darling "
+            },
+            {
+              "chordId": "d_7",
+              "lyrics": "Clementine,"
+            }
+          ],
+          "section": "פזמון"
+        },
+        {
+          "segments": [
+            {
+              "chordId": "d_7",
+              "lyrics": "You are lost and gone forever, dreadful "
             },
             {
               "chordId": "g_major",
@@ -1198,7 +2460,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "en",
+      "genre": "folk"
     },
     {
       "id": "david_melech",
@@ -1265,7 +2529,9 @@
             }
           ]
         }
-      ]
+      ],
+      "language": "he",
+      "genre": "jewish"
     }
   ]
 }

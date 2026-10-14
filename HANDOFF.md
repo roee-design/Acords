@@ -34,6 +34,8 @@
 6. **אתגר האקורדים** — שיא עם ציון שליטה; SFX; מתקדם על `hitStream` (פגיעה = פריטה חדשה + אישור), בלי grace.
 7. **מנוע זיהוי (`ChordDetectionEngine`)** — ראו סעיף 6. כל המסכים (אימון, אתגר, שירים, מסלול מודרך, פריטות, זיהוי חופשי) מתקדמים על `AudioAnalyzer.hitStream` ולא על "פריים perfect ראשון".
 9. **מעקב התקדמות (`ProgressService`)** — SharedPreferences (`acords_progress_v1`): פגיעות לכל אקורד + ימי תרגול → שליטה (התחלה ≥1 / בתרגול ≥5 / בשליטה ≥15 ב־2 ימים לפחות); רמה+אקורד אחרונים; שלב במסלול המודרך + השלמות לכל שיר; שלב לכל דפוס פריטה; רצף ימים. מוצג: כרטיס «ההתקדמות שלך» בבית (כולל «המשך מאיפה שהפסקת»), כוכבים בספרייה, תגיות ברשימת שירים/דפוסים.
+11. **לימוד פריטות = משחק** — רשימת דפוסים → `StrumLessonScreen` (אנימציה, 3 מהירויות נפתחות בכוכב, שיר לדוגמה). המסלול המודרך הישן (`_PatternGuidedPathScreen`) הוסר. `song_guided_path_screen.dart` עדיין לא מחובר לשום מסך.
+12. **ספריית שירים** — `SongDefinition.language` (`he`/`en`), `genre` (`SongGenres`), `SongLine.section`. מילים לא הורחבו ל«התקווה» (אין אקורדים מאומתים לבית 2), House of the Rising Sun, «יונתן הקטן» (©), Dylan/Beatles (©).
 10. **מעברי אקורדים** — לא חוזרים כמסך נפרד; היכולת עצמה (זיהוי החלפת אקורד אחרי פריטה) מובנית במנוע ומשמשת שירים/פריטות.
 8. **שירים ופריטות** — טאב «שירים» בניווט התחתון (נגן חופשי: אקורדים/BPM/פריטה/מילים PD); מסך בית → **לימוד פריטות** (6 דפוסים ב־`strum_patterns.json`, מסלול 3 שלבים); `StrumPreviewService` = mediaPlayer + WAV זמני + seek/resume + ארפג׳ו pitched; instrumental = תיבות `| C | G |` בלי מילים מזויפות.
 
@@ -43,6 +45,7 @@
 
 | תאריך | סוג | נתיב APK | מה נכנס לבנייה |
 |--------|-----|----------|----------------|
+| 2026-10-14 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: **משחק קצב** (`RhythmGameScreen` + `lib/game/`: מסלול בפרספקטיבה, שיפוט ±70/±140ms, קומבו, כוכבים, מצב גיטרה=onset מהמיקרופון + בונוס אקורד ✓ / מצב מסך=החלקה ↓↑ + צליל Karplus–Strong `GameSoundService`, כיול בספירה); **שיעור פריטה** (`StrumLessonScreen`: אנימציית גיטרה בתקריב `GuitarStrumAnimation` → משחק ב-3 מהירויות → שיר לדוגמה `exampleSongId`); **ספריית שירים** (חיפוש, עברית/אנגלית, ז׳אנרים, רמות, קיבוץ); **מילים מלאות** + `section` ל-9 שירים PD; `language`/`genre` לכל שיר; ערכת נושא אינדיגו/סגול; כפתור «משחק קצב» בנגן השירים |
 | 2026-10-13 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: **תיקון קריסה בפתיחה (שוב)** — `MainActivity.kt` לא היה בגיט כי הכלל `chord_trainer/` ב־`.gitignore` תפס גם את `android/app/src/main/kotlin/com/chordtrainer/chord_trainer/`; הכלל עוגן ל־`/chord_trainer/` והקובץ נוסף. אומת ב־BlueStacks (מופע `Pie64_1`). טקסט כרטיס פריטות: 11 דפוסים |
 | 2026-10-12 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: **מנוע זיהוי חדש** (`ChordDetectionEngine` + `OnsetDetector` + `ChordMatcher` יחסי עם דחיית צליל זר) — פגיעה דורשת פריטה חדשה; **טיונר YIN+חידוד ספקטרלי**; **`ProgressService`** + כרטיס התקדמות/כוכבים/תגיות; +22 אקורדים, +8 שירים PD, +5 דפוסים; בדיקות `test/` + ספסל סינתטי `test/bench` |
 | 2026-09-25 | debug | `build/app/outputs/flutter-apk/app-debug.apk` | `1.0.2+1`: ארכיטקטורה — טאב «שירים»; לימוד פריטות (6 דפוסים + 3 שלבים); `StrumPreviewService` mediaPlayer+WAV+ארפג׳ו; תיבות ריקות ל־instrumental |

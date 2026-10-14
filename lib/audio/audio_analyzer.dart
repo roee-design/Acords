@@ -33,6 +33,8 @@ class AudioAnalyzer {
       StreamController<ChordFeedback>.broadcast();
   final StreamController<ChordHit> _hitController =
       StreamController<ChordHit>.broadcast();
+  final StreamController<DateTime> _onsetController =
+      StreamController<DateTime>.broadcast();
 
   StreamSubscription<List<int>>? _pcmSubscription;
   ChordDefinition? _targetChord;
@@ -50,6 +52,10 @@ class AudioAnalyzer {
 
   /// Confirmed strummed chords (see [ChordDetectionEngine]).
   Stream<ChordHit> get hitStream => _hitController.stream;
+
+  /// Every detected strum attack (wall-clock time of the attack) — used by
+  /// the rhythm game to judge timing.
+  Stream<DateTime> get onsetStream => _onsetController.stream;
 
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
@@ -160,6 +166,9 @@ class AudioAnalyzer {
       }
       if (!_hitController.isClosed) {
         await _hitController.close();
+      }
+      if (!_onsetController.isClosed) {
+        await _onsetController.close();
       }
       await _recorder.dispose();
     });
@@ -297,6 +306,16 @@ class AudioAnalyzer {
   void _onPcmChunk(List<int> pcmBytes) {
     if (!_isListening) return;
     final frames = _engine.addPcm16(pcmBytes);
+    final onsets = _engine.takeOnsets();
+    if (onsets.isNotEmpty && !_onsetController.isClosed) {
+      // Map the sample clock to wall time: the newest sample is "now".
+      final now = DateTime.now();
+      for (final sample in onsets) {
+        final ageUs =
+            (_engine.sampleClock - sample) * 1000000 ~/ sampleRate;
+        _onsetController.add(now.subtract(Duration(microseconds: ageUs)));
+      }
+    }
     for (final frame in frames) {
       if (_feedbackController.isClosed) return;
       _feedbackController.add(frame.feedback);

@@ -128,6 +128,15 @@ class ChordDetectionEngine {
   String? _runChordId;
 
   ChordMatcher get matcher => _matcher;
+
+  final List<int> _pendingOnsets = <int>[];
+
+  /// Strum attacks (sample clock) detected since the last call.
+  List<int> takeOnsets() {
+    final out = List<int>.of(_pendingOnsets);
+    _pendingOnsets.clear();
+    return out;
+  }
   int get sampleClock => _clock;
   int? get lastStrumSample => _strumStart;
   ChordDefinition? get target => _target;
@@ -176,6 +185,7 @@ class ChordDetectionEngine {
     _strumStart = null;
     _lastOnset = null;
     _residual = null;
+    _pendingOnsets.clear();
     _onsets.reset();
     _resetRun();
   }
@@ -218,6 +228,7 @@ class ChordDetectionEngine {
 
   void _ingest(Float32List part) {
     final onsets = _onsets.process(part, _clock);
+    _pendingOnsets.addAll(onsets);
     for (final s in part) {
       _ring[_ringPos] = s;
       _ringPos = (_ringPos + 1) % fftSize;
