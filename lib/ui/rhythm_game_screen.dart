@@ -9,10 +9,12 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../audio/audio_analyzer.dart';
 import '../audio/game_sound_service.dart';
 import '../audio/mic_capture_guard.dart';
+import '../audio/onset_detector.dart';
 import '../game/rhythm_chart.dart';
 import '../game/rhythm_game_painter.dart';
 import '../game/rhythm_judge.dart';
 import '../models/chord_definition.dart';
+import '../models/feedback_result.dart';
 import '../models/strumming_pattern.dart';
 import '../services/progress_service.dart';
 import 'app_theme.dart';
@@ -53,7 +55,18 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   late final Ticker _ticker;
   final Stopwatch _clock = Stopwatch();
   final ValueNotifier<int> _frame = ValueNotifier(0);
-  final AudioAnalyzer _analyzer = AudioAnalyzer();
+  // Sensitive strum detection: soft finger strums on nylon must count.
+  final AudioAnalyzer _analyzer =
+      AudioAnalyzer(onsetDetector: OnsetDetector.forRhythmGame());
+
+  /// Live mic level (0–1 RMS) and time of the last heard strum, for the HUD.
+  final ValueNotifier<double> _micLevel = ValueNotifier(0);
+  final ValueNotifier<double> _lastHeardMs = ValueNotifier(-100000);
+  StreamSubscription<ChordFeedback>? _levelSub;
+  double _quietSinceMs = 0;
+
+  /// Recent raw stroke offsets vs. the nearest note (mic latency tracking).
+  final List<double> _liveOffsets = [];
   final Random _rng = Random();
 
   late RhythmJudge _judge;
@@ -92,7 +105,15 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   }
 
   void _resetRun() {
-    _judge = RhythmJudge(_chart);
+    // The mic adds jitter a touch screen does not: slightly wider windows.
+    final mic = _mode == GameInputMode.guitar;
+    _judge = RhythmJudge(
+      _chart,
+      perfectWindowMs: mic ? 80 : 70,
+      goodWindowMs: mic ? 170 : 140,
+    );
+    _liveOffsets.clear();
+    _quietSinceMs = 0;
     _view = GameView(
       chart: _chart,
       judge: _judge,
@@ -110,6 +131,9 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _ticker.dispose();
     _onsetSub?.cancel();
     _hitSub?.cancel();
+    _levelSub?.cancel();
+    _micLevel.dispose();
+    _lastHeardMs.dispose();
     unawaited(_analyzer.stop());
     MicCaptureGuard.instance.release(this);
     unawaited(_analyzer.dispose());
@@ -143,6 +167,9 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
         await _analyzer.start();
         _onsetSub = _analyzer.onsetStream.listen(_onOnset);
         _hitSub = _analyzer.hitStream.listen(_onChordHit);
+        _levelSub = _analyzer.feedbackStream.listen(
+          (f) => _micLevel.value = f.inputLevel,
+        );
       } catch (e) {
         MicCaptureGuard.instance.release(this);
         if (!mounted) return;
@@ -170,8 +197,10 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   Future<void> _stopMic() async {
     await _onsetSub?.cancel();
     await _hitSub?.cancel();
+    await _levelSub?.cancel();
     _onsetSub = null;
     _hitSub = null;
+    _levelSub = null;
     await _analyzer.stop();
     MicCaptureGuard.instance.release(this);
   }
@@ -180,7 +209,10 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _ticker.stop();
     _clock.stop();
     unawaited(WakelockPlus.disable());
-    if (_mode == GameInputMode.guitar) await _stopMic();
+    if (_mode == GameInputMode.guitar) {
+      await _stopMic();
+      ProgressService.instance.setCalibrationMs('mic', _calibration);
+    }
     _newBest = ProgressService.instance.recordGameResult(
       widget.progressKey,
       stars: _judge.stars,
@@ -239,6 +271,10 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       setState(() {});
     }
 
+    if (_mode == GameInputMode.guitar && _micLevel.value > 0.004) {
+      _quietSinceMs = now;
+    }
+
     if (_phase == _Phase.playing && now > _chart.durationMs + 900) {
       unawaited(_finish());
     }
@@ -251,7 +287,36 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     final t = at.difference(_startWall).inMicroseconds / 1000.0 -
         _leadInMs -
         _calibration;
+    _lastHeardMs.value = _nowMs;
+    if (_phase == _Phase.playing) _trackLatency(t);
     _stroke(t, null);
+  }
+
+  /// Phone microphones deliver audio 100–300 ms late, and the amount varies
+  /// per device. Strums that land near a note (within half a slot) tell us the
+  /// remaining offset; once a few agree, shift the calibration towards them so
+  /// guitar mode keeps working even if nobody strummed during the count-in.
+  void _trackLatency(double t) {
+    final reach = min(320.0, _chart.slotMs * 0.5);
+    double? best;
+    for (final note in _chart.notes) {
+      final d = t - note.timeMs;
+      if (d < -reach) break;
+      if (d.abs() <= reach && (best == null || d.abs() < best.abs())) best = d;
+    }
+    if (best == null) return;
+    _liveOffsets.add(best);
+    if (_liveOffsets.length > 10) _liveOffsets.removeAt(0);
+    if (_liveOffsets.length < 4) return;
+    final sorted = [..._liveOffsets]..sort();
+    final median = sorted[sorted.length ~/ 2];
+    if (median.abs() < 25) return;
+    final shift = (median * 0.6).round();
+    _calibration = (_calibration + shift).clamp(0, 450);
+    for (var i = 0; i < _liveOffsets.length; i++) {
+      _liveOffsets[i] -= shift;
+    }
+    _calibrationNote = 'השהיית מיקרופון כוילה אוטומטית: $_calibration ms';
   }
 
   void _onChordHit(ChordHit hit) {
@@ -537,8 +602,76 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
               ),
             ],
           ),
+          if (_mode == GameInputMode.guitar) _micMeter(),
           if (_chart.song != null) _lyricsCard(bar),
         ],
+      ),
+    );
+  }
+
+  /// Live mic level + a flash on every strum the game heard, so it is
+  /// obvious whether the guitar reaches the microphone at all.
+  Widget _micMeter() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: ValueListenableBuilder<double>(
+        valueListenable: _lastHeardMs,
+        builder: (context, heardAt, _) {
+          final flash = _nowMs - heardAt < 220;
+          final quiet = _phase == _Phase.playing &&
+              _view.nowMs - _quietSinceMs > 3000;
+          return Column(
+            children: [
+              Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: flash
+                          ? AppColors.turquoise
+                          : Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      flash ? '🎸 נשמע!' : '🎤',
+                      style: TextStyle(
+                        color: flash ? AppColors.background : Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: _micLevel,
+                      builder: (context, level, _) => ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (level / 0.08).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
+                          color: level > 0.004
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (quiet)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    'לא שומעים את הגיטרה — קרבו את הטלפון לגיטרה ובדקו הרשאת מיקרופון',
+                    style: TextStyle(color: AppColors.amberBright, fontSize: 12),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -791,7 +924,9 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     final j = _judge;
     final offset = j.medianOffsetMs;
     String? tendency;
-    if (offset != null && offset.abs() >= 35) {
+    if (_mode == GameInputMode.guitar) {
+      // Mic latency is calibrated away, so the median says little here.
+    } else if (offset != null && offset.abs() >= 35) {
       tendency = offset < 0
           ? 'נוטים להקדים בכ-${offset.abs().round()}ms — חכו רגע לחץ'
           : 'נוטים לאחר בכ-${offset.round()}ms — נסו לפרוט קצת קודם';

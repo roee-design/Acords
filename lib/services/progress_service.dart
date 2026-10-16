@@ -314,7 +314,7 @@ class ProgressService extends ChangeNotifier {
   }
 
   /// Latency correction (ms) learned from the count-in, per input mode.
-  int calibrationMs(String mode) => _calibration[mode] ?? (mode == 'mic' ? 90 : 0);
+  int calibrationMs(String mode) => _calibration[mode] ?? (mode == 'mic' ? 150 : 0);
 
   void setCalibrationMs(String mode, int ms) {
     _calibration[mode] = ms;

@@ -7,6 +7,7 @@ import '../chord/chord_matcher.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import 'chord_detection_engine.dart';
+import 'onset_detector.dart';
 
 export 'chord_detection_engine.dart' show ChordHit;
 
@@ -17,9 +18,11 @@ class AudioAnalyzer {
   AudioAnalyzer({
     this.sampleRate = 44100,
     this.fftSize = 8192,
+    OnsetDetector? onsetDetector,
   })  : _engine = ChordDetectionEngine(
           sampleRate: sampleRate,
           fftSize: fftSize,
+          onsetDetector: onsetDetector,
         ),
         _recorder = AudioRecorder();
 

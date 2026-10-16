@@ -100,6 +100,7 @@ class GuitarSynth {
     Set<int> skipStrings = const {},
     Set<int>? onlyStrings,
     bool legato = false,
+    bool soft = false,
   }) {
     final notes = [...chord.notes]
       ..sort((a, b) => down ? b.string - a.string : a.string - b.string);
@@ -110,8 +111,8 @@ class GuitarSynth {
       if (onlyStrings != null && !onlyStrings.contains(note.string)) continue;
       events.add(
         StringEvent(
-          attackNoise: !legato,
-          attackSec: legato ? 0.025 : 0.003,
+          attackNoise: !legato && !soft,
+          attackSec: legato ? 0.025 : (soft ? 0.008 : 0.003),
           stringNumber: note.string,
           midi: note.midi,
           startSec: t,

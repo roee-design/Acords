@@ -34,6 +34,20 @@ class OnsetDetector {
         _frame = Float64List(frameSize),
         _ring = Float64List(frameSize);
 
+  /// Settings for the rhythm game, where strums are expected on the beat:
+  /// accept soft finger strums (nylon strings, no pick noise) and fast
+  /// patterns. A few extra detections only cost an "extra stroke" there,
+  /// while a missed real strum breaks the combo.
+  factory OnsetDetector.forRhythmGame({int sampleRate = 44100}) =>
+      OnsetDetector(
+        sampleRate: sampleRate,
+        minLevel: 0.005,
+        fluxThreshold: 0.09,
+        refractoryMs: 130,
+        attackFluxThreshold: 0.04,
+        attackRiseRatio: 1.1,
+      );
+
   final int sampleRate;
   final int frameSize;
   final int hopSize;
