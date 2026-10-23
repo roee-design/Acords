@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -236,6 +237,7 @@ class AudioAnalyzer {
       }
 
       _engine.reset();
+      _sampleZeroWallUs = null;
       // Re-arm the current target on the fresh clock.
       final target = _targetChord;
       if (!_freePlayMode && target != null) {
@@ -306,17 +308,35 @@ class AudioAnalyzer {
     _feedbackController.add(_matcher.freePlayWaiting(0));
   }
 
+  /// Wall-clock time (µs since epoch) of sample 0 of the current session.
+  ///
+  /// Audio arrives in chunks, sometimes late, never early — so the smallest
+  /// "arrival time − audio time" seen is the best estimate of the true
+  /// mapping. Using it (instead of "now" when a chunk is processed) removes
+  /// the delivery and processing jitter from every strum timestamp; what is
+  /// left is a constant input latency that calibration measures once.
+  int? _sampleZeroWallUs;
+
   void _onPcmChunk(List<int> pcmBytes) {
     if (!_isListening) return;
+    final arrivalUs = DateTime.now().microsecondsSinceEpoch;
     final frames = _engine.addPcm16(pcmBytes);
+    final audioUs = _engine.sampleClock * 1000000 ~/ sampleRate;
+    final candidate = arrivalUs - audioUs;
+    final current = _sampleZeroWallUs;
+    // Track the minimum, but let it creep up slowly (0.1 ms per chunk) so a
+    // drift between the audio and system clocks cannot freeze a stale value.
+    _sampleZeroWallUs =
+        current == null ? candidate : min(current + 100, candidate);
     final onsets = _engine.takeOnsets();
     if (onsets.isNotEmpty && !_onsetController.isClosed) {
-      // Map the sample clock to wall time: the newest sample is "now".
-      final now = DateTime.now();
+      final zero = _sampleZeroWallUs!;
       for (final sample in onsets) {
-        final ageUs =
-            (_engine.sampleClock - sample) * 1000000 ~/ sampleRate;
-        _onsetController.add(now.subtract(Duration(microseconds: ageUs)));
+        _onsetController.add(
+          DateTime.fromMicrosecondsSinceEpoch(
+            zero + sample * 1000000 ~/ sampleRate,
+          ),
+        );
       }
     }
     for (final frame in frames) {

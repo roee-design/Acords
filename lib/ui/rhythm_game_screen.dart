@@ -10,6 +10,7 @@ import '../audio/audio_analyzer.dart';
 import '../audio/game_sound_service.dart';
 import '../audio/mic_capture_guard.dart';
 import '../audio/onset_detector.dart';
+import '../game/latency_calibration.dart';
 import '../game/rhythm_chart.dart';
 import '../game/rhythm_game_painter.dart';
 import '../game/rhythm_judge.dart';
@@ -18,6 +19,8 @@ import '../models/feedback_result.dart';
 import '../models/strumming_pattern.dart';
 import '../services/progress_service.dart';
 import 'app_theme.dart';
+import 'mic_calibration_screen.dart';
+import 'navigation/app_page_route.dart';
 import 'widgets/strumming_pattern_widget.dart';
 
 enum GameInputMode { guitar, touch }
@@ -65,8 +68,8 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   StreamSubscription<ChordFeedback>? _levelSub;
   double _quietSinceMs = 0;
 
-  /// Recent raw stroke offsets vs. the nearest note (mic latency tracking).
-  final List<double> _liveOffsets = [];
+  /// Fine-tuning around the calibrated mic latency during a run.
+  LatencyTrim _trim = LatencyTrim();
   final Random _rng = Random();
 
   late RhythmJudge _judge;
@@ -79,9 +82,8 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
 
   DateTime _startWall = DateTime.now();
   double _leadInMs = 0;
+  /// Latency correction for this run: measured mic latency (guitar) or 0.
   int _calibration = 0;
-  final List<double> _countInOffsets = [];
-  String? _calibrationNote;
   int _lastBeatTicked = -1000;
   int _currentBar = -1;
   StreamSubscription<DateTime>? _onsetSub;
@@ -112,15 +114,13 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       perfectWindowMs: mic ? 80 : 70,
       goodWindowMs: mic ? 170 : 140,
     );
-    _liveOffsets.clear();
+    _trim = LatencyTrim();
     _quietSinceMs = 0;
     _view = GameView(
       chart: _chart,
       judge: _judge,
       chordName: (id) => widget.chordCatalog.chordById(id)?.displayName ?? id,
     );
-    _countInOffsets.clear();
-    _calibrationNote = null;
     _lastBeatTicked = -1000;
     _currentBar = -1;
     _newBest = false;
@@ -153,9 +153,19 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       _busy = true;
       _error = null;
     });
+    if (_mode == GameInputMode.guitar &&
+        ProgressService.instance.micLatencyMs == null) {
+      // First guitar game: measure this phone's mic latency once.
+      final saved = await _openCalibration();
+      if (!saved) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+    }
     _resetRun();
-    final modeKey = _mode == GameInputMode.guitar ? 'mic' : 'touch';
-    _calibration = ProgressService.instance.calibrationMs(modeKey);
+    _calibration = _mode == GameInputMode.guitar
+        ? (ProgressService.instance.micLatencyMs ?? 150)
+        : 0;
 
     if (_mode == GameInputMode.guitar) {
       try {
@@ -194,6 +204,17 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _ticker.start();
   }
 
+  /// Opens the calibration screen; true when a latency was saved.
+  Future<bool> _openCalibration() async {
+    final saved = await Navigator.of(context).push<bool>(
+      AppPageRoute<bool>(
+        page: MicCalibrationScreen(chordCatalog: widget.chordCatalog),
+      ),
+    );
+    if (mounted) setState(() {});
+    return saved ?? false;
+  }
+
   Future<void> _stopMic() async {
     await _onsetSub?.cancel();
     await _hitSub?.cancel();
@@ -209,10 +230,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _ticker.stop();
     _clock.stop();
     unawaited(WakelockPlus.disable());
-    if (_mode == GameInputMode.guitar) {
-      await _stopMic();
-      ProgressService.instance.setCalibrationMs('mic', _calibration);
-    }
+    if (_mode == GameInputMode.guitar) await _stopMic();
     _newBest = ProgressService.instance.recordGameResult(
       widget.progressKey,
       stars: _judge.stars,
@@ -243,7 +261,6 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     }
 
     if (_phase == _Phase.countIn && now >= 0) {
-      _applyCountInCalibration();
       setState(() => _phase = _Phase.playing);
     }
 
@@ -284,39 +301,25 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   // --- Input -------------------------------------------------------------------
 
   void _onOnset(DateTime at) {
-    final t = at.difference(_startWall).inMicroseconds / 1000.0 -
-        _leadInMs -
-        _calibration;
+    final heard = at.difference(_startWall).inMicroseconds / 1000.0 - _leadInMs;
+    final t = heard - _calibration - _trim.correctionMs;
     _lastHeardMs.value = _nowMs;
-    if (_phase == _Phase.playing) _trackLatency(t);
+    if (_phase == _Phase.playing) {
+      // Small, bounded fine-tuning from strokes close to a note.
+      final nearest = _nearestNoteOffset(t);
+      if (nearest != null) _trim.add(nearest);
+    }
     _stroke(t, null);
   }
 
-  /// Phone microphones deliver audio 100–300 ms late, and the amount varies
-  /// per device. Strums that land near a note (within half a slot) tell us the
-  /// remaining offset; once a few agree, shift the calibration towards them so
-  /// guitar mode keeps working even if nobody strummed during the count-in.
-  void _trackLatency(double t) {
-    final reach = min(320.0, _chart.slotMs * 0.5);
+  double? _nearestNoteOffset(double t) {
     double? best;
     for (final note in _chart.notes) {
       final d = t - note.timeMs;
-      if (d < -reach) break;
-      if (d.abs() <= reach && (best == null || d.abs() < best.abs())) best = d;
+      if (d < -200) break;
+      if (best == null || d.abs() < best.abs()) best = d;
     }
-    if (best == null) return;
-    _liveOffsets.add(best);
-    if (_liveOffsets.length > 10) _liveOffsets.removeAt(0);
-    if (_liveOffsets.length < 4) return;
-    final sorted = [..._liveOffsets]..sort();
-    final median = sorted[sorted.length ~/ 2];
-    if (median.abs() < 25) return;
-    final shift = (median * 0.6).round();
-    _calibration = (_calibration + shift).clamp(0, 450);
-    for (var i = 0; i < _liveOffsets.length; i++) {
-      _liveOffsets[i] -= shift;
-    }
-    _calibrationNote = 'השהיית מיקרופון כוילה אוטומטית: $_calibration ms';
+    return best;
   }
 
   void _onChordHit(ChordHit hit) {
@@ -356,9 +359,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   RhythmNote? _stroke(double t, StrokeDirection? direction) {
     final now = _nowMs;
     if (t < -_chart.beatMs * 0.5 && _phase == _Phase.countIn) {
-      // Count-in stroke: measure latency against the nearest count-in beat.
-      final beat = (t / _chart.beatMs).round() * _chart.beatMs;
-      if (beat < 0) _countInOffsets.add(t - beat);
+      // Strokes during the count-in are not judged.
       _view
         ..lastStrokeMs = now
         ..lastStrokeDown = true;
@@ -409,19 +410,6 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       default:
         unawaited(sounds.playStrum(chord, down: down));
     }
-  }
-
-  void _applyCountInCalibration() {
-    if (_countInOffsets.length < 3) return;
-    final s = [..._countInOffsets]..sort();
-    final median = s[s.length ~/ 2];
-    final modeKey = _mode == GameInputMode.guitar ? 'mic' : 'touch';
-    final updated = (_calibration + median)
-        .round()
-        .clamp(modeKey == 'mic' ? 0 : -80, modeKey == 'mic' ? 400 : 200);
-    _calibration = updated;
-    ProgressService.instance.setCalibrationMs(modeKey, updated);
-    _calibrationNote = 'כויל לפי הספירה: $updated ms';
   }
 
   void _popup(String text, Color color, double now) {
@@ -785,11 +773,9 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
                 fontWeight: FontWeight.w900,
               ),
             ),
-            Text(
-              _mode == GameInputMode.guitar
-                  ? 'פרטו על כל ספירה — ככה נכייל את התזמון'
-                  : 'הקישו על כל ספירה — ככה נכייל את התזמון',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            const Text(
+              'מתחילים בעוד… התחילו לפרוט כשהחץ הראשון מגיע למיתרים',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ],
         ),
@@ -882,6 +868,37 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
                       : 'החליקו למטה/למעלה בכיוון החץ — ותשמעו את האקורד.',
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
+                if (_mode == GameInputMode.guitar)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.tune_rounded, color: AppColors.turquoise, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            ProgressService.instance.micLatencyMs == null
+                                ? 'כיול מיקרופון: עוד לא בוצע (ייפתח לפני המשחק)'
+                                : 'כיול מיקרופון: ${ProgressService.instance.micLatencyMs} ms',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => unawaited(_openCalibration()),
+                          child: Text(
+                            ProgressService.instance.micLatencyMs == null
+                                ? 'כייל עכשיו'
+                                : 'כייל מחדש',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _metronome,
@@ -997,14 +1014,22 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],
-                if (_calibrationNote != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _calibrationNote!,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                    ),
+                if (_mode == GameInputMode.guitar) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'איחור מיקרופון: ${_calibration + _trim.correctionMs.round()} ms',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
+                  if (j.finalAccuracy < 0.6)
+                    TextButton.icon(
+                      onPressed: () async {
+                        await _openCalibration();
+                        if (mounted) setState(() => _phase = _Phase.setup);
+                      },
+                      icon: const Icon(Icons.tune_rounded),
+                      label: const Text('הפריטות לא נקלטו בזמן? כיילו מחדש'),
+                    ),
+                ],
                 const SizedBox(height: 18),
                 Row(
                   children: [

@@ -321,6 +321,13 @@ class ProgressService extends ChangeNotifier {
     _changed();
   }
 
+  /// Measured microphone latency (ms) from the calibration screen, or null if
+  /// the player never calibrated. (New key: values the old count-in /
+  /// in-game auto-calibration saved could be far off and are not reused.)
+  int? get micLatencyMs => _calibration['mic_v2'];
+
+  void setMicLatencyMs(int ms) => setCalibrationMs('mic_v2', ms);
+
   // --- Streak ------------------------------------------------------------------
 
   /// Consecutive practice days ending today (or yesterday, so the streak is
