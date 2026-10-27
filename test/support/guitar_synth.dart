@@ -76,7 +76,12 @@ class StringEvent {
 /// spread inside a strum, ringing tails of the previous chord, pick noise and
 /// room noise.
 class GuitarSynth {
-  GuitarSynth({this.sampleRate = 44100, int seed = 1}) : _rng = Random(seed);
+  GuitarSynth({this.sampleRate = 44100, this.seed = 1}) : _rng = Random(seed);
+
+  final int seed;
+
+  /// Uniform random number in [0, 1) from this synth's seeded generator.
+  double rand() => _rng.nextDouble();
 
   final int sampleRate;
   final Random _rng;

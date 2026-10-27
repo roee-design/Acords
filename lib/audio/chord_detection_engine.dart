@@ -31,6 +31,22 @@ class ChordHit {
   double get latencyMs => (confirmSample - strumSample) * 1000 / sampleRate;
 }
 
+/// Spectrum of the first analysable span after a strum, with what was ringing
+/// just before it — enough to check *what* was played (rhythm game).
+class StrumCapture {
+  const StrumCapture({
+    required this.onsetSample,
+    required this.frame,
+    required this.residual,
+  });
+
+  final int onsetSample;
+  final SpectrumFrame frame;
+
+  /// Spectrum of the ~93 ms before the strum (same scale as [frame]).
+  final List<double>? residual;
+}
+
 /// Result of one analysis step.
 class EngineFrame {
   const EngineFrame({
@@ -70,6 +86,7 @@ class ChordDetectionEngine {
     this.maxStrumAgeMs = 1500,
     this.strumClusterMs = 160,
     this.strumLookbackMs = 0,
+    this.captureSamples = 5120,
     ChordMatcher? matcher,
     OnsetDetector? onsetDetector,
   })  : _fft = FftProcessor(fftSize: fftSize, sampleRate: sampleRate.toDouble()),
@@ -97,6 +114,11 @@ class ChordDetectionEngine {
 
   /// Onsets closer than this belong to the same strum (string spread).
   final int strumClusterMs;
+
+  /// Post-strum span (≈116 ms) a [StrumCapture] waits for, so a whole strum
+  /// (strings follow each other over 60–140 ms) is in the spectrum. If the
+  /// next strum comes sooner, the latest frame before it is used.
+  final int captureSamples;
 
   /// Accept a strum that started this long *before* the target was set.
   final int strumLookbackMs;
@@ -130,6 +152,18 @@ class ChordDetectionEngine {
   ChordMatcher get matcher => _matcher;
 
   final List<int> _pendingOnsets = <int>[];
+  final List<StrumCapture> _pendingCaptures = <StrumCapture>[];
+  var _captureDone = true;
+  SpectrumFrame? _captureFrame;
+  List<double>? _captureResidual;
+  int? _captureOnset;
+
+  /// Post-strum spectra captured since the last call (one per strum).
+  List<StrumCapture> takeCaptures() {
+    final out = List<StrumCapture>.of(_pendingCaptures);
+    _pendingCaptures.clear();
+    return out;
+  }
 
   /// Strum attacks (sample clock) detected since the last call.
   List<int> takeOnsets() {
@@ -186,6 +220,9 @@ class ChordDetectionEngine {
     _lastOnset = null;
     _residual = null;
     _pendingOnsets.clear();
+    _pendingCaptures.clear();
+    _captureDone = true;
+    _captureFrame = null;
     _onsets.reset();
     _resetRun();
   }
@@ -241,14 +278,30 @@ class ChordDetectionEngine {
       if (last == null || onset - last > cluster) {
         // A new strum: restart the post-strum analysis window and remember
         // what was already ringing.
+        _flushCapture();
         _strumStart = onset;
         _residual = _spectrumBefore(onset);
+        _captureDone = false;
+        _captureFrame = null;
+        _captureOnset = onset;
+        _captureResidual = _residual;
         _perfectRun = 0;
         _hitConsumed = false;
         _runChordId = null;
       }
       _lastOnset = onset;
     }
+  }
+
+  /// Emits the pending capture of the current strum, if it has a frame.
+  void _flushCapture() {
+    final frame = _captureFrame;
+    final onset = _captureOnset;
+    if (_captureDone || frame == null || onset == null) return;
+    _captureDone = true;
+    _pendingCaptures.add(
+      StrumCapture(onsetSample: onset, frame: frame, residual: _captureResidual),
+    );
   }
 
   static const int _residualSamples = 4096;
@@ -302,6 +355,11 @@ class ChordDetectionEngine {
       sampleRate: sampleRate.toDouble(),
       inputLevel: sqrt(sumSq / segment),
     );
+
+    if (strum != null && !_captureDone && segment < fftSize) {
+      _captureFrame = frame;
+      if (segment >= captureSamples) _flushCapture();
+    }
 
     final freePlay = _freePlay;
     final feedback = freePlay != null

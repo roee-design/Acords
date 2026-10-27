@@ -10,7 +10,15 @@ import '../models/feedback_result.dart';
 import 'chord_detection_engine.dart';
 import 'onset_detector.dart';
 
-export 'chord_detection_engine.dart' show ChordHit;
+export 'chord_detection_engine.dart' show ChordHit, StrumCapture;
+
+/// A strum with its post-strum spectrum and wall-clock time (rhythm game).
+class TimedStrumCapture {
+  const TimedStrumCapture({required this.at, required this.capture});
+
+  final DateTime at;
+  final StrumCapture capture;
+}
 
 /// Microphone capture feeding [ChordDetectionEngine]; publishes per-frame
 /// [ChordFeedback] (live UI) and [ChordHit]s (a target chord that was actually
@@ -20,10 +28,12 @@ class AudioAnalyzer {
     this.sampleRate = 44100,
     this.fftSize = 8192,
     OnsetDetector? onsetDetector,
+    int strumClusterMs = 160,
   })  : _engine = ChordDetectionEngine(
           sampleRate: sampleRate,
           fftSize: fftSize,
           onsetDetector: onsetDetector,
+          strumClusterMs: strumClusterMs,
         ),
         _recorder = AudioRecorder();
 
@@ -39,6 +49,8 @@ class AudioAnalyzer {
       StreamController<ChordHit>.broadcast();
   final StreamController<DateTime> _onsetController =
       StreamController<DateTime>.broadcast();
+  final StreamController<TimedStrumCapture> _captureController =
+      StreamController<TimedStrumCapture>.broadcast();
 
   StreamSubscription<List<int>>? _pcmSubscription;
   ChordDefinition? _targetChord;
@@ -60,6 +72,13 @@ class AudioAnalyzer {
   /// Every detected strum attack (wall-clock time of the attack) — used by
   /// the rhythm game to judge timing.
   Stream<DateTime> get onsetStream => _onsetController.stream;
+
+  /// One event per strum, ~70–120 ms after it, with the spectrum needed to
+  /// check which notes were played.
+  Stream<TimedStrumCapture> get strumCaptureStream =>
+      _captureController.stream;
+
+  ChordMatcher get matcher => _engine.matcher;
 
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
@@ -173,6 +192,9 @@ class AudioAnalyzer {
       }
       if (!_onsetController.isClosed) {
         await _onsetController.close();
+      }
+      if (!_captureController.isClosed) {
+        await _captureController.close();
       }
       await _recorder.dispose();
     });
@@ -335,6 +357,20 @@ class AudioAnalyzer {
         _onsetController.add(
           DateTime.fromMicrosecondsSinceEpoch(
             zero + sample * 1000000 ~/ sampleRate,
+          ),
+        );
+      }
+    }
+    final captures = _engine.takeCaptures();
+    if (captures.isNotEmpty && !_captureController.isClosed) {
+      final zero = _sampleZeroWallUs!;
+      for (final c in captures) {
+        _captureController.add(
+          TimedStrumCapture(
+            at: DateTime.fromMicrosecondsSinceEpoch(
+              zero + c.onsetSample * 1000000 ~/ sampleRate,
+            ),
+            capture: c,
           ),
         );
       }

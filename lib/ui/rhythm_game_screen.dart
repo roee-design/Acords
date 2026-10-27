@@ -14,6 +14,7 @@ import '../game/latency_calibration.dart';
 import '../game/rhythm_chart.dart';
 import '../game/rhythm_game_painter.dart';
 import '../game/rhythm_judge.dart';
+import '../game/stroke_verifier.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
 import '../models/strumming_pattern.dart';
@@ -60,7 +61,16 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   final ValueNotifier<int> _frame = ValueNotifier(0);
   // Sensitive strum detection: soft finger strums on nylon must count.
   final AudioAnalyzer _analyzer =
-      AudioAnalyzer(onsetDetector: OnsetDetector.forRhythmGame());
+      AudioAnalyzer(
+    onsetDetector: OnsetDetector.forRhythmGame(),
+    // Every stroke is its own event (no merging of close attacks).
+    strumClusterMs: 90,
+  );
+  late final StrokeVerifier _verifier = StrokeVerifier(
+    _analyzer.matcher,
+    referenceA4Hz: widget.chordCatalog.referenceA4Hz,
+  );
+  StreamSubscription<TimedStrumCapture>? _captureSub;
 
   /// Live mic level (0–1 RMS) and time of the last heard strum, for the HUD.
   final ValueNotifier<double> _micLevel = ValueNotifier(0);
@@ -130,6 +140,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   void dispose() {
     _ticker.dispose();
     _onsetSub?.cancel();
+    _captureSub?.cancel();
     _hitSub?.cancel();
     _levelSub?.cancel();
     _micLevel.dispose();
@@ -176,6 +187,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
         );
         await _analyzer.start();
         _onsetSub = _analyzer.onsetStream.listen(_onOnset);
+        _captureSub = _analyzer.strumCaptureStream.listen(_onCapture);
         _hitSub = _analyzer.hitStream.listen(_onChordHit);
         _levelSub = _analyzer.feedbackStream.listen(
           (f) => _micLevel.value = f.inputLevel,
@@ -217,6 +229,8 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
 
   Future<void> _stopMic() async {
     await _onsetSub?.cancel();
+    await _captureSub?.cancel();
+    _captureSub = null;
     await _hitSub?.cancel();
     await _levelSub?.cancel();
     _onsetSub = null;
@@ -281,8 +295,14 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       setState(() {});
     }
 
-    // Misses (judge a little behind "now" so late swipes still count).
-    final missed = _judge.advance(now - 30);
+    // Misses: judged a little behind "now" so late swipes still count. In
+    // guitar mode a strum reaches us only after the mic latency plus ~120 ms
+    // of analysis (to check the notes) — a note must not be called missed
+    // before its strum could possibly have arrived.
+    final judgeDelay = _mode == GameInputMode.guitar
+        ? _calibration + _trim.correctionMs + 260
+        : 30;
+    final missed = _judge.advance(now - judgeDelay);
     if (missed.isNotEmpty) {
       _popup('פספוס', AppColors.error, now);
       setState(() {});
@@ -300,26 +320,59 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
 
   // --- Input -------------------------------------------------------------------
 
+  /// Raw strum attack: only drives the "נשמע!" flash. Judging waits for the
+  /// strum's spectrum ([_onCapture]) so *what* was played can be checked.
   void _onOnset(DateTime at) {
-    final heard = at.difference(_startWall).inMicroseconds / 1000.0 - _leadInMs;
-    final t = heard - _calibration - _trim.correctionMs;
     _lastHeardMs.value = _nowMs;
-    if (_phase == _Phase.playing) {
-      // Small, bounded fine-tuning from strokes close to a note.
-      final nearest = _nearestNoteOffset(t);
-      if (nearest != null) _trim.add(nearest);
-    }
-    _stroke(t, null);
+    _view
+      ..lastStrokeMs = _nowMs
+      ..lastStrokeDown = true;
   }
 
-  double? _nearestNoteOffset(double t) {
-    double? best;
-    for (final note in _chart.notes) {
-      final d = t - note.timeMs;
-      if (d < -200) break;
-      if (best == null || d.abs() < best.abs()) best = d;
+  /// A strum with its spectrum: find the note it was meant for, check the
+  /// notes against that bar's chord, then judge its timing.
+  void _onCapture(TimedStrumCapture e) {
+    if (_phase != _Phase.playing) return;
+    final heard = e.at.difference(_startWall).inMicroseconds / 1000.0 - _leadInMs;
+    final t = heard - _calibration - _trim.correctionMs;
+    final note = _judge.noteNear(t);
+    if (note == null) {
+      _judge.extras++;
+      return;
     }
-    return best;
+    final chord = widget.chordCatalog.chordById(_chart.bars[note.barIndex].chordId);
+    if (chord == null) return;
+    final check = _verifier.check(
+      chord: chord,
+      kind: note.kind,
+      stringNumber: note.stringNumber,
+      frame: e.capture.frame,
+      residual: e.capture.residual,
+    );
+    final now = _nowMs;
+    switch (check) {
+      case StrokeCheck.wrongNotes:
+        _judge.markWrongNotes(note, now);
+        _popup(
+          note.kind == PatternEventKind.finger ? 'צליל לא נכון' : 'אקורד לא נכון',
+          AppColors.error,
+          now,
+        );
+        setState(() {});
+      case StrokeCheck.noFreshSound:
+        break; // not a new stroke (noise / chord ringing on)
+      case StrokeCheck.ok:
+        // ↑ and i/m/a only count while actually playing (see RhythmJudge).
+        final needsAnchor = note.kind == PatternEventKind.up ||
+            (note.kind == PatternEventKind.finger && (note.stringNumber ?? 6) < 4);
+        if (needsAnchor &&
+            !_judge.hasRecentHitBefore(note, _chart.beatMs * 1.05)) {
+          break;
+        }
+        // Small, bounded fine-tuning from verified strokes.
+        _trim.add(t - note.timeMs);
+        _stroke(t, null);
+    }
   }
 
   void _onChordHit(ChordHit hit) {
@@ -1001,6 +1054,8 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
                     _StatChip('מושלם', '${j.perfects}', AppColors.turquoise),
                     _StatChip('טוב', '${j.goods}', AppColors.amberBright),
                     _StatChip('פספוס', '${j.misses + (_chart.notes.length - j.judgedCount)}', AppColors.error),
+                    if (_mode == GameInputMode.guitar && j.wrongNotes > 0)
+                      _StatChip('אקורד/צליל שגוי', '${j.wrongNotes}', AppColors.amber),
                     _StatChip('קומבו', '${j.maxCombo}', AppColors.pink),
                     if (_mode == GameInputMode.guitar)
                       _StatChip('אקורדים ✓', '$verified/${_chart.bars.length}', AppColors.success),

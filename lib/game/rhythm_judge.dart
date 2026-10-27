@@ -15,6 +15,7 @@ class NoteResult {
     required this.atMs,
     this.offsetMs,
     this.wrongDirection = false,
+    this.wrongNotes = false,
   });
 
   final Judgement judgement;
@@ -25,6 +26,9 @@ class NoteResult {
   /// Input time − note time (negative = early). Null for misses.
   final double? offsetMs;
   final bool wrongDirection;
+
+  /// Missed because the mic heard the wrong notes at this time.
+  final bool wrongNotes;
 }
 
 /// Result of feeding one input to [RhythmJudge.input].
@@ -184,6 +188,53 @@ class RhythmJudge {
       wrongDirection: true,
     );
     return true;
+  }
+
+  /// Number of strokes heard at a note's time with the wrong notes.
+  int wrongNotes = 0;
+
+  /// The player strummed at [note]'s time but the mic heard the wrong notes
+  /// (no chord held, wrong strings): the note counts as missed.
+  void markWrongNotes(RhythmNote note, double atMs) {
+    if (results.containsKey(note.index)) return;
+    results[note.index] = NoteResult(
+      judgement: Judgement.miss,
+      atMs: atMs,
+      wrongNotes: true,
+    );
+    wrongNotes++;
+    combo = 0;
+  }
+
+  /// Unjudged note closest to [timeMs] within the good window, if any.
+  RhythmNote? noteNear(double timeMs) {
+    RhythmNote? best;
+    var bestDist = double.infinity;
+    for (var i = _nextUnjudged; i < chart.notes.length; i++) {
+      final note = chart.notes[i];
+      final d = timeMs - note.timeMs;
+      if (d < -goodWindowMs) break;
+      if (results.containsKey(note.index)) continue;
+      if (d.abs() <= goodWindowMs && d.abs() < bestDist) {
+        bestDist = d.abs();
+        best = note;
+      }
+    }
+    return best;
+  }
+
+  /// True when some note in the [windowMs] before [note] was hit — i.e. the
+  /// player is actively playing. ↑ strums and i/m/a notes need this: a chord
+  /// left ringing can look like a soft ↑ to the mic, but never like the ↓
+  /// (or thumb) that always precedes them when someone really plays.
+  bool hasRecentHitBefore(RhythmNote note, double windowMs) {
+    for (var i = note.index - 1; i >= 0; i--) {
+      final prev = chart.notes[i];
+      if (note.timeMs - prev.timeMs > windowMs) break;
+      final r = results[prev.index];
+      if (r != null && r.judgement != Judgement.miss) return true;
+    }
+    return false;
   }
 
   /// Adds a bonus (e.g. chord confirmed for a bar).
