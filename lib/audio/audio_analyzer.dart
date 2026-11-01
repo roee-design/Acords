@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -79,6 +80,27 @@ class AudioAnalyzer {
       _captureController.stream;
 
   ChordMatcher get matcher => _engine.matcher;
+
+  /// The engine's strum detector (diagnostics attach to it).
+  OnsetDetector get onsetDetector => _engine.onsetDetector;
+
+  BytesBuilder? _recording;
+
+  /// Starts keeping a copy of every PCM chunk the engine analyses (call
+  /// before [start]; sample 0 of the recording is sample 0 of the session).
+  void startRecording() => _recording = BytesBuilder(copy: false);
+
+  /// The recorded PCM16 mono bytes so far (null if not recording); stops
+  /// recording.
+  Uint8List? takeRecording() {
+    final bytes = _recording?.takeBytes();
+    _recording = null;
+    return bytes;
+  }
+
+  /// Wall-clock time (µs since epoch) of sample 0 of the current session,
+  /// once audio has arrived (see [_onPcmChunk]).
+  int? get sampleZeroWallUs => _sampleZeroWallUs;
 
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
@@ -342,6 +364,7 @@ class AudioAnalyzer {
   void _onPcmChunk(List<int> pcmBytes) {
     if (!_isListening) return;
     final arrivalUs = DateTime.now().microsecondsSinceEpoch;
+    _recording?.add(pcmBytes);
     final frames = _engine.addPcm16(pcmBytes);
     final audioUs = _engine.sampleClock * 1000000 ~/ sampleRate;
     final candidate = arrivalUs - audioUs;

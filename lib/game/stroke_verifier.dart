@@ -55,6 +55,18 @@ class StrokeVerifier {
   /// Same for a single plucked note.
   final double noteFreshness;
 
+  /// Why the last [check] decided what it did (diagnostics), e.g.
+  /// `bass missing (s6 G2 missing)` or `fresh 0.08 < 0.28`.
+  String lastDetail = '';
+
+  /// Freshness score computed by the last [check], if it got that far.
+  double? lastFreshness;
+
+  StrokeCheck _verdict(StrokeCheck result, String detail) {
+    lastDetail = detail;
+    return result;
+  }
+
   StrokeCheck check({
     required ChordDefinition chord,
     required PatternEventKind kind,
@@ -62,8 +74,9 @@ class StrokeVerifier {
     required SpectrumFrame frame,
     List<double>? residual,
   }) {
+    lastFreshness = null;
     if (kind == PatternEventKind.mute || kind == PatternEventKind.pause) {
-      return StrokeCheck.ok;
+      return _verdict(StrokeCheck.ok, 'percussive stroke, not checked');
     }
     final feedback = matcher.evaluateFrame(
       chord: chord,
@@ -72,52 +85,80 @@ class StrokeVerifier {
       residual: residual,
     );
     if (feedback.matchStatus == ChordMatchStatus.waiting) {
-      return StrokeCheck.noFreshSound;
+      return _verdict(
+        StrokeCheck.noFreshSound,
+        'too quiet (rms ${frame.inputLevel.toStringAsFixed(4)})',
+      );
     }
 
     final active = feedback.activeStringFeedback;
-    if (active.isEmpty) return StrokeCheck.wrongNotes;
+    if (active.isEmpty) return _verdict(StrokeCheck.wrongNotes, 'no strings');
     bool sounds(StringFeedback s) =>
         s.status == NoteStatus.detected || s.status == NoteStatus.weak;
+    String describe(StringFeedback s) =>
+        's${s.stringNumber} ${s.expectedNote} ${s.status.name}';
+    final extra = feedback.extraNoteHz;
 
     if (kind == PatternEventKind.finger) {
       final expected = _fingerNote(chord, stringNumber);
-      if (expected == null) return StrokeCheck.wrongNotes;
+      if (expected == null) {
+        return _verdict(StrokeCheck.wrongNotes, 'no note for string $stringNumber');
+      }
       final fb = feedback.stringFeedback
           .where((s) => s.stringNumber == expected.string)
           .firstOrNull;
-      if (fb == null || !sounds(fb)) return StrokeCheck.wrongNotes;
-      if (feedback.extraNoteHz != null) return StrokeCheck.wrongNotes;
-      if (!_isFresh(
-        frame,
-        residual,
-        _upperPartials([_hz(expected.midi)]),
-        // The thumb's bass note is the anchor of an arpeggio: same strict
-        // bar as a ↓ strum. i/m/a notes ring over each other → lower bar.
-        (stringNumber ?? 6) >= 4 ? downFreshness : noteFreshness,
-      )) {
-        return StrokeCheck.noFreshSound;
+      if (fb == null || !sounds(fb)) {
+        return _verdict(
+          StrokeCheck.wrongNotes,
+          'expected note missing (${fb == null ? 's${expected.string}' : describe(fb)})',
+        );
       }
-      return StrokeCheck.ok;
+      if (extra != null) {
+        return _verdict(StrokeCheck.wrongNotes, 'foreign note ${extra.round()}Hz');
+      }
+      // The thumb's bass note is the anchor of an arpeggio: same strict
+      // bar as a ↓ strum. i/m/a notes ring over each other → lower bar.
+      final needed = (stringNumber ?? 6) >= 4 ? downFreshness : noteFreshness;
+      if (!_isFresh(frame, residual, _upperPartials([_hz(expected.midi)]), needed)) {
+        return _verdict(
+          StrokeCheck.noFreshSound,
+          'fresh ${lastFreshness?.toStringAsFixed(3)} < $needed',
+        );
+      }
+      return _verdict(
+        StrokeCheck.ok,
+        '${describe(fb)} fresh ${lastFreshness?.toStringAsFixed(3) ?? 'n/a'}',
+      );
     }
 
     // Strums.
-    if (feedback.extraNoteHz != null) return StrokeCheck.wrongNotes;
+    if (extra != null) {
+      return _verdict(StrokeCheck.wrongNotes, 'foreign note ${extra.round()}Hz');
+    }
     final down = kind != PatternEventKind.up;
     final sounding = active.where(sounds).toList();
+    final missing = [for (final s in active) if (!sounds(s)) describe(s)];
     if (sounding.length < active.length - (down ? 1 : 2)) {
-      return StrokeCheck.wrongNotes;
+      return _verdict(
+        StrokeCheck.wrongNotes,
+        'too many strings missing (${missing.join(', ')})',
+      );
     }
     final soundingPcs = {
       for (final s in sounding)
         chord.noteForString(s.stringNumber)!.midi % 12,
     };
     if (!soundingPcs.containsAll(chord.pitchClasses)) {
-      return StrokeCheck.wrongNotes;
+      return _verdict(
+        StrokeCheck.wrongNotes,
+        'chord tone missing (${missing.join(', ')})',
+      );
     }
     if (down) {
       final bass = active.first; // ordered 6 → 1, so the lowest string
-      if (!sounds(bass)) return StrokeCheck.wrongNotes;
+      if (!sounds(bass)) {
+        return _verdict(StrokeCheck.wrongNotes, 'bass missing (${describe(bass)})');
+      }
     }
 
     final notes = [
@@ -126,15 +167,23 @@ class StrokeVerifier {
           chord.noteForString(s)!,
     ];
     final fresh = down ? notes : notes.reversed.take(4).toList();
+    final needed = down ? downFreshness : upFreshness;
     if (!_isFresh(
       frame,
       residual,
       _upperPartials([for (final n in fresh) _hz(n.midi)]),
-      down ? downFreshness : upFreshness,
+      needed,
     )) {
-      return StrokeCheck.noFreshSound;
+      return _verdict(
+        StrokeCheck.noFreshSound,
+        'fresh ${lastFreshness?.toStringAsFixed(3)} < $needed',
+      );
     }
-    return StrokeCheck.ok;
+    return _verdict(
+      StrokeCheck.ok,
+      '${sounding.length}/${active.length} strings, fresh '
+          '${lastFreshness?.toStringAsFixed(3) ?? 'n/a'}',
+    );
   }
 
   /// Note a finger stroke should play: the chord's note on that string, or
@@ -207,6 +256,8 @@ class StrokeVerifier {
     double threshold,
   ) {
     if (residual == null) return true;
-    return freshness(frame, residual, freqs) >= threshold;
+    final score = freshness(frame, residual, freqs);
+    lastFreshness = score;
+    return score >= threshold;
   }
 }

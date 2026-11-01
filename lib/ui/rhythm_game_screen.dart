@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio/audio_analyzer.dart';
+import '../audio/detection_diagnostics.dart';
 import '../audio/game_sound_service.dart';
 import '../audio/mic_capture_guard.dart';
 import '../audio/onset_detector.dart';
+import '../game/guitar_stroke_referee.dart';
 import '../game/latency_calibration.dart';
 import '../game/rhythm_chart.dart';
 import '../game/rhythm_game_painter.dart';
@@ -80,6 +83,13 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
 
   /// Fine-tuning around the calibrated mic latency during a run.
   LatencyTrim _trim = LatencyTrim();
+  late GuitarStrokeReferee _referee;
+
+  /// Debug builds: log flux/RMS/strokes to logcat and save the round's audio
+  /// (see [DetectionDiagnostics]) for the false-positive bench.
+  var _diagnosticsEnabled = false;
+  DetectionDiagnostics? _diagnostics;
+  String? _diagnosticsPath;
   final Random _rng = Random();
 
   late RhythmJudge _judge;
@@ -125,6 +135,13 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       goodWindowMs: mic ? 170 : 140,
     );
     _trim = LatencyTrim();
+    _referee = GuitarStrokeReferee(
+      judge: _judge,
+      verifier: _verifier,
+      trim: _trim,
+      chordForBar: (i) =>
+          widget.chordCatalog.chordById(_chart.bars[i].chordId),
+    );
     _quietSinceMs = 0;
     _view = GameView(
       chart: _chart,
@@ -143,6 +160,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _captureSub?.cancel();
     _hitSub?.cancel();
     _levelSub?.cancel();
+    _diagnostics?.detach();
     _micLevel.dispose();
     _lastHeardMs.dispose();
     unawaited(_analyzer.stop());
@@ -181,6 +199,13 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     if (_mode == GameInputMode.guitar) {
       try {
         await MicCaptureGuard.instance.claim(this, _stopMic);
+        _diagnostics?.detach();
+        _diagnostics = null;
+        _diagnosticsPath = null;
+        if (_diagnosticsEnabled) {
+          _diagnostics = DetectionDiagnostics()..attach(_analyzer);
+          _analyzer.startRecording();
+        }
         _analyzer.setTargetChord(
           widget.chordCatalog.chordById(_chart.bars.first.chordId)!,
           referenceA4Hz: widget.chordCatalog.referenceA4Hz,
@@ -227,6 +252,50 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     return saved ?? false;
   }
 
+  Future<void> _saveDiagnostics() async {
+    final diag = _diagnostics;
+    if (diag == null) return;
+    diag.detach();
+    final j = _judge;
+    final zero = _analyzer.sampleZeroWallUs;
+    final name = '${DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first}'
+        '_${widget.progressKey.replaceAll(':', '_')}';
+    try {
+      _diagnosticsPath = await diag.save(
+        name: name,
+        pcm16: _analyzer.takeRecording(),
+        sampleRate: _analyzer.sampleRate,
+        session: {
+          'title': widget.title,
+          'progressKey': widget.progressKey,
+          'pattern': _chart.pattern.toJson(),
+          'bpm': _chart.bpm,
+          'bars': [for (final b in _chart.bars) b.chordId],
+          'sampleRate': _analyzer.sampleRate,
+          'leadInMs': _leadInMs,
+          'calibrationMs': _calibration,
+          'trimFinalMs': _trim.correctionMs,
+          // Chart time of a sample = sample/rate − this − leadIn − calibration.
+          'sampleZeroToStartMs': zero == null
+              ? null
+              : (_startWall.microsecondsSinceEpoch - zero) / 1000.0,
+          'perfectWindowMs': j.perfectWindowMs,
+          'goodWindowMs': j.goodWindowMs,
+          'result': {
+            'accuracy': j.finalAccuracy,
+            'perfects': j.perfects,
+            'goods': j.goods,
+            'misses': j.misses,
+            'wrongNotes': j.wrongNotes,
+            'extras': j.extras,
+          },
+        },
+      );
+    } catch (e) {
+      diag.log('SESSION save failed: $e');
+    }
+  }
+
   Future<void> _stopMic() async {
     await _onsetSub?.cancel();
     await _captureSub?.cancel();
@@ -244,7 +313,10 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _ticker.stop();
     _clock.stop();
     unawaited(WakelockPlus.disable());
-    if (_mode == GameInputMode.guitar) await _stopMic();
+    if (_mode == GameInputMode.guitar) {
+      await _stopMic();
+      await _saveDiagnostics();
+    }
     _newBest = ProgressService.instance.recordGameResult(
       widget.progressKey,
       stars: _judge.stars,
@@ -275,6 +347,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     }
 
     if (_phase == _Phase.countIn && now >= 0) {
+      _diagnostics?.log('PHASE playing (chart time 0)');
       setState(() => _phase = _Phase.playing);
     }
 
@@ -329,49 +402,32 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       ..lastStrokeDown = true;
   }
 
-  /// A strum with its spectrum: find the note it was meant for, check the
-  /// notes against that bar's chord, then judge its timing.
+  /// A strum with its spectrum: the referee finds the note it was meant
+  /// for, checks the notes against that bar's chord and judges its timing.
   void _onCapture(TimedStrumCapture e) {
     if (_phase != _Phase.playing) return;
-    final heard = e.at.difference(_startWall).inMicroseconds / 1000.0 - _leadInMs;
-    final t = heard - _calibration - _trim.correctionMs;
-    final note = _judge.noteNear(t);
-    if (note == null) {
-      _judge.extras++;
-      return;
-    }
-    final chord = widget.chordCatalog.chordById(_chart.bars[note.barIndex].chordId);
-    if (chord == null) return;
-    final check = _verifier.check(
-      chord: chord,
-      kind: note.kind,
-      stringNumber: note.stringNumber,
-      frame: e.capture.frame,
-      residual: e.capture.residual,
-    );
+    final heard = e.at.difference(_startWall).inMicroseconds / 1000.0 -
+        _leadInMs -
+        _calibration;
     final now = _nowMs;
-    switch (check) {
-      case StrokeCheck.wrongNotes:
-        _judge.markWrongNotes(note, now);
+    final decision = _referee.onCapture(heard, e.capture, nowMs: now);
+    _diagnostics?.decision(decision);
+    switch (decision.outcome) {
+      case CaptureOutcome.wrongNotes:
         _popup(
-          note.kind == PatternEventKind.finger ? 'צליל לא נכון' : 'אקורד לא נכון',
+          decision.note!.kind == PatternEventKind.finger
+              ? 'צליל לא נכון'
+              : 'אקורד לא נכון',
           AppColors.error,
           now,
         );
         setState(() {});
-      case StrokeCheck.noFreshSound:
-        break; // not a new stroke (noise / chord ringing on)
-      case StrokeCheck.ok:
-        // ↑ and i/m/a only count while actually playing (see RhythmJudge).
-        final needsAnchor = note.kind == PatternEventKind.up ||
-            (note.kind == PatternEventKind.finger && (note.stringNumber ?? 6) < 4);
-        if (needsAnchor &&
-            !_judge.hasRecentHitBefore(note, _chart.beatMs * 1.05)) {
-          break;
-        }
-        // Small, bounded fine-tuning from verified strokes.
-        _trim.add(t - note.timeMs);
-        _stroke(t, null);
+      case CaptureOutcome.hit:
+        _present(decision.input!, now);
+      case CaptureOutcome.notFresh:
+      case CaptureOutcome.unanchored:
+      case CaptureOutcome.noNote:
+        break;
     }
   }
 
@@ -421,6 +477,12 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     }
 
     final outcome = _judge.input(t, direction: direction);
+    _present(outcome, now);
+    return outcome.note;
+  }
+
+  /// Popup, sound, particles and HUD refresh for a judged stroke.
+  void _present(InputOutcome outcome, double now) {
     final note = outcome.note;
     final down = note == null || note.kind != PatternEventKind.up;
     _view
@@ -446,7 +508,6 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       _lastFeedbackSetState = now;
       setState(() {});
     }
-    return note;
   }
 
   void _playStrokeSound(RhythmNote? note, bool down) {
@@ -952,6 +1013,20 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
                       ],
                     ),
                   ),
+                if (kDebugMode && _mode == GameInputMode.guitar)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _diagnosticsEnabled,
+                    onChanged: (v) => setState(() => _diagnosticsEnabled = v),
+                    title: const Text(
+                      'מצב אבחון (לוגים + הקלטה)',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'מדפיס Flux/RMS ל-logcat ושומר את הסיבוב (WAV+JSON) לבדיקה',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _metronome,
@@ -1085,6 +1160,14 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
                       label: const Text('הפריטות לא נקלטו בזמן? כיילו מחדש'),
                     ),
                 ],
+                if (_diagnosticsPath != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: SelectableText(
+                      'אבחון נשמר: $_diagnosticsPath',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    ),
+                  ),
                 const SizedBox(height: 18),
                 Row(
                   children: [

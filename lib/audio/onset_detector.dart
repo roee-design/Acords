@@ -3,6 +3,71 @@ import 'dart:typed_data';
 
 import 'package:fftea/fftea.dart';
 
+/// Everything [OnsetDetector] measured for one hop, and what it decided.
+/// Emitted to [OnsetDetector.onHop] (diagnostics / benches only).
+class OnsetHopRecord {
+  const OnsetHopRecord({
+    required this.sample,
+    required this.sampleRate,
+    required this.rms,
+    required this.noiseFloor,
+    required this.flux,
+    required this.threshold,
+    required this.hfExcess,
+    required this.rise,
+    required this.riseFraction,
+    required this.isPeak,
+    required this.onset,
+    required this.rejectReasons,
+  });
+
+  /// Start of the hop (sample clock).
+  final int sample;
+  final int sampleRate;
+
+  /// RMS of the hop and the background level it is gated against.
+  final double rms;
+  final double noiseFloor;
+
+  /// Spectral flux of the hop and the adaptive threshold it had to beat
+  /// (recent median + `fluxThreshold`).
+  final double flux;
+  final double threshold;
+
+  /// High-band (2–8 kHz) flux above its recent median: the pick/nail attack.
+  final double hfExcess;
+
+  /// Hop RMS / quietest of the 4 hops before it.
+  final double rise;
+
+  /// Fraction of audible bins that rose together (> 35 %).
+  final double riseFraction;
+
+  /// Local maximum of flux (only peaks can become onsets).
+  final bool isPeak;
+  final bool onset;
+
+  /// Why a flux peak was *not* an onset (empty for onsets and non-peaks):
+  /// `flux`, `level`, `gate`, `rise`, `cover`, `attack`, `refractory`.
+  final List<String> rejectReasons;
+
+  double get timeSec => sample / sampleRate;
+
+  /// One compact log line, e.g. for `adb logcat`.
+  String toLogLine() {
+    final verdict = onset
+        ? 'ONSET'
+        : isPeak
+            ? 'peak-rejected[${rejectReasons.join(',')}]'
+            : '-';
+    return 't=${timeSec.toStringAsFixed(3)} rms=${rms.toStringAsFixed(4)} '
+        'floor=${noiseFloor.toStringAsFixed(4)} '
+        'flux=${flux.toStringAsFixed(3)} thr=${threshold.toStringAsFixed(3)} '
+        'hf=${hfExcess.toStringAsFixed(3)} rise=${rise.toStringAsFixed(2)} '
+        'cover=${riseFraction.toStringAsFixed(2)} $verdict';
+  }
+}
+
 /// Detects strum / pluck attacks in a mono sample stream, on the sample clock.
 ///
 /// Every [hopSize] samples a short Hann-windowed FFT is taken and the
@@ -88,8 +153,8 @@ class OnsetDetector {
   final double minRiseFraction;
   double _noiseFloor = 0;
 
-  /// Optional diagnostics sink (tests / benches).
-  void Function(String message)? debugLog;
+  /// Optional per-hop diagnostics sink (logs / benches). Null = no cost.
+  void Function(OnsetHopRecord record)? onHop;
 
     /// Current background level estimate (RMS).
   double get noiseFloor => _noiseFloor;
@@ -239,28 +304,42 @@ class OnsetDetector {
     final pending = _pendingFlux;
     if (pending != null) {
       final isPeak = pending >= (_beforePendingFlux ?? 0) && pending >= flux;
-      if (isPeak &&
-          pending >= _pendingThreshold &&
-          _pendingRms >= minLevel &&
-          (noiseGateRatio <= 0 || _pendingRms >= _noiseFloor * noiseGateRatio) &&
-          _pendingRise >= energyRiseRatio &&
-          (minRiseFraction <= 0 || _pendingRiseFraction >= minRiseFraction) &&
-          (_pendingHfExcess >= attackFluxThreshold ||
-              _pendingRise >= attackRiseRatio)) {
-        final last = _lastOnsetSample;
-        final refractory = (refractoryMs * sampleRate / 1000).round();
-        if (last == null || _pendingSample - last >= refractory) {
-          _lastOnsetSample = _pendingSample;
-          onset = _pendingSample;
-          debugLog?.call(
-            'onset t=${(_pendingSample / sampleRate).toStringAsFixed(2)} '
-            'flux=${pending.toStringAsFixed(3)} thr=${_pendingThreshold.toStringAsFixed(3)} '
-            'rms=${_pendingRms.toStringAsFixed(4)} rise=${_pendingRise.toStringAsFixed(2)} '
-            'hf=${_pendingHfExcess.toStringAsFixed(3)} cover=${_pendingRiseFraction.toStringAsFixed(2)} '
-            'floor=${_noiseFloor.toStringAsFixed(4)}',
-          );
-        }
+      final refractory = (refractoryMs * sampleRate / 1000).round();
+      final last = _lastOnsetSample;
+      // Each rule, named so diagnostics can say which one rejected a peak.
+      final reasons = <String>[
+        if (pending < _pendingThreshold) 'flux',
+        if (_pendingRms < minLevel) 'level',
+        if (noiseGateRatio > 0 && _pendingRms < _noiseFloor * noiseGateRatio)
+          'gate',
+        if (_pendingRise < energyRiseRatio) 'rise',
+        if (minRiseFraction > 0 && _pendingRiseFraction < minRiseFraction)
+          'cover',
+        if (!(_pendingHfExcess >= attackFluxThreshold ||
+            _pendingRise >= attackRiseRatio))
+          'attack',
+        if (last != null && _pendingSample - last < refractory) 'refractory',
+      ];
+      if (isPeak && reasons.isEmpty) {
+        _lastOnsetSample = _pendingSample;
+        onset = _pendingSample;
       }
+      onHop?.call(
+        OnsetHopRecord(
+          sample: _pendingSample,
+          sampleRate: sampleRate,
+          rms: _pendingRms,
+          noiseFloor: _noiseFloor,
+          flux: pending,
+          threshold: _pendingThreshold,
+          hfExcess: _pendingHfExcess,
+          rise: _pendingRise,
+          riseFraction: _pendingRiseFraction,
+          isPeak: isPeak,
+          onset: onset != null,
+          rejectReasons: isPeak && onset == null ? reasons : const [],
+        ),
+      );
     }
     _beforePendingFlux = pending;
     _pendingFlux = flux;

@@ -151,6 +151,9 @@ class ChordDetectionEngine {
 
   ChordMatcher get matcher => _matcher;
 
+  /// The strum detector (e.g. to attach diagnostics).
+  OnsetDetector get onsetDetector => _onsets;
+
   final List<int> _pendingOnsets = <int>[];
   final List<StrumCapture> _pendingCaptures = <StrumCapture>[];
   var _captureDone = true;

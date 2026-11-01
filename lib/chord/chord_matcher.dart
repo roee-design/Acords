@@ -56,6 +56,10 @@ class ChordMatcher {
   final double wrongNoteCentsTolerance;
   final double maxTuningShiftCents;
 
+  /// Optional diagnostics sink: one record per evaluated frame (logs /
+  /// benches). Null = no cost.
+  void Function(ChordMatchRecord record)? onEvaluate;
+
   static double _dbToRatio(double db) => pow(10, db / 20).toDouble();
 
   /// Legacy entry point: full-window magnitudes from [fftProcessor].
@@ -235,7 +239,7 @@ class ChordMatcher {
       matchStatus = ChordMatchStatus.close;
     }
 
-    return ChordFeedback(
+    final feedback = ChordFeedback(
       chordId: chord.id,
       chordName: chord.displayName,
       matchStatus: matchStatus,
@@ -247,6 +251,16 @@ class ChordMatcher {
       extraNoteHz: extra?.hz,
       tuningShiftCents: confident.length >= 3 ? shift : null,
     );
+    onEvaluate?.call(
+      ChordMatchRecord(
+        feedback: feedback,
+        bandPeak: frame.bandPeak,
+        strongLevel: strongLevel,
+        weakLevel: weakLevel,
+        extraMagnitude: extra?.magnitude,
+      ),
+    );
+    return feedback;
   }
 
   /// Strength and pitch of one expected note.
@@ -598,4 +612,51 @@ class _NoteEvidence {
 
   final double level;
   final double? cents;
+}
+
+/// What [ChordMatcher.evaluateFrame] saw and decided for one frame.
+class ChordMatchRecord {
+  const ChordMatchRecord({
+    required this.feedback,
+    required this.bandPeak,
+    required this.strongLevel,
+    required this.weakLevel,
+    this.extraMagnitude,
+  });
+
+  final ChordFeedback feedback;
+
+  /// Strongest component in the guitar band (all levels are relative to it).
+  final double bandPeak;
+
+  /// Absolute levels a note needed for "detected" / "weak".
+  final double strongLevel;
+  final double weakLevel;
+
+  /// Magnitude of the strongest unexplained (foreign) peak, if any.
+  final double? extraMagnitude;
+
+  static String _db(double v, double ref) =>
+      v <= 0 || ref <= 0 ? '-inf' : (20 * log(v / ref) / ln10).toStringAsFixed(1);
+
+  /// e.g. `C perfect rms=0.0412 floor=-61.2dB strong=-26.0dB weak=-36.0dB
+  /// | s5 C3 -3.1dB +4c detected | s4 E3 … | extra=-` .
+  String toLogLine() {
+    final f = feedback;
+    final strings = [
+      for (final s in f.activeStringFeedback)
+        's${s.stringNumber} ${s.expectedNote} ${_db(s.energy, bandPeak)}dB '
+            '${s.pitchCentsOffset == null ? '?' : '${s.pitchCentsOffset! >= 0 ? '+' : ''}${s.pitchCentsOffset!.round()}'}c '
+            '${s.status.name}',
+    ].join(' | ');
+    final extra = f.extraNoteHz == null
+        ? '-'
+        : '${f.extraNoteHz!.round()}Hz ${_db(extraMagnitude ?? 0, bandPeak)}dB';
+    return '${f.chordName} ${f.matchStatus.name} '
+        'rms=${f.inputLevel.toStringAsFixed(4)} '
+        'floor=${_db(f.noiseFloor, bandPeak)}dB '
+        'strong=${_db(strongLevel, bandPeak)}dB weak=${_db(weakLevel, bandPeak)}dB '
+        '| $strings | extra=$extra'
+        '${f.tuningShiftCents == null ? '' : ' shift=${f.tuningShiftCents!.round()}c'}';
+  }
 }
