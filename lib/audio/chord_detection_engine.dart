@@ -31,19 +31,26 @@ class ChordHit {
   double get latencyMs => (confirmSample - strumSample) * 1000 / sampleRate;
 }
 
-/// Spectrum of the first analysable span after a strum, with what was ringing
-/// just before it — enough to check *what* was played (rhythm game).
+/// Spectrum of the ~116 ms after one detected attack, with what was ringing
+/// just before it — enough to check *what* was played (rhythm game). Every
+/// attack the onset detector reports gets its own capture.
 class StrumCapture {
   const StrumCapture({
     required this.onsetSample,
+    required this.strokeStartSample,
     required this.frame,
     required this.residual,
   });
 
   final int onsetSample;
+
+  /// Start of the stroke this attack belongs to (the first of a run of
+  /// attacks at most ~120 ms apart); [residual] ends here.
+  final int strokeStartSample;
   final SpectrumFrame frame;
 
-  /// Spectrum of the ~93 ms before the strum (same scale as [frame]).
+  /// Spectrum of the ~93 ms before the stroke began (same scale as
+  /// [frame]); null at the very start of a session.
   final List<double>? residual;
 }
 
@@ -115,9 +122,9 @@ class ChordDetectionEngine {
   /// Onsets closer than this belong to the same strum (string spread).
   final int strumClusterMs;
 
-  /// Post-strum span (≈116 ms) a [StrumCapture] waits for, so a whole strum
-  /// (strings follow each other over 60–140 ms) is in the spectrum. If the
-  /// next strum comes sooner, the latest frame before it is used.
+  /// Post-attack span (≈116 ms) of a [StrumCapture]: long enough for a
+  /// whole strum (strings follow each other over 30–90 ms) and for telling
+  /// the low strings apart.
   final int captureSamples;
 
   /// Accept a strum that started this long *before* the target was set.
@@ -156,10 +163,27 @@ class ChordDetectionEngine {
 
   final List<int> _pendingOnsets = <int>[];
   final List<StrumCapture> _pendingCaptures = <StrumCapture>[];
-  var _captureDone = true;
-  SpectrumFrame? _captureFrame;
-  List<double>? _captureResidual;
-  int? _captureOnset;
+
+  // Independent strum captures: every detected attack gets its own
+  // before/after spectra, taken from a longer history than the analysis ring.
+  // A spurious attack (a ringing chord "breathing") therefore cannot reset or
+  // block the capture of a real strum that follows it.
+  static const int _captureRingSize = 32768;
+  final Float32List _captureRing = Float32List(_captureRingSize);
+
+  /// Queued attacks: (attack sample, sample where its "before" span ends).
+  final List<(int, int)> _captureQueue = <(int, int)>[];
+
+  // One strum often produces two or three attacks (its strings, the room's
+  // echo). Attacks at most [_strokeGapMs] apart are one stroke, and all of
+  // them compare against the sound *before the stroke began* — otherwise the
+  // second attack would take the first strings of the same strum for "sound
+  // that was already there". The look-back is capped so a long run of false
+  // attacks cannot drag the reference far into the past.
+  static const int _strokeGapMs = 120;
+  static const int _maxLookBackMs = 200;
+  int? _strokeFirstOnset;
+  int? _strokeLastOnset;
 
   /// Post-strum spectra captured since the last call (one per strum).
   List<StrumCapture> takeCaptures() {
@@ -224,8 +248,10 @@ class ChordDetectionEngine {
     _residual = null;
     _pendingOnsets.clear();
     _pendingCaptures.clear();
-    _captureDone = true;
-    _captureFrame = null;
+    _captureQueue.clear();
+    _strokeFirstOnset = null;
+    _strokeLastOnset = null;
+    _captureRing.fillRange(0, _captureRing.length, 0);
     _onsets.reset();
     _resetRun();
   }
@@ -273,7 +299,23 @@ class ChordDetectionEngine {
       _ring[_ringPos] = s;
       _ringPos = (_ringPos + 1) % fftSize;
     }
+    for (var i = 0; i < part.length; i++) {
+      _captureRing[(_clock + i) % _captureRingSize] = part[i];
+    }
     _clock += part.length;
+    for (final onset in onsets) {
+      final last = _strokeLastOnset;
+      if (last == null || onset - last > _strokeGapMs * sampleRate ~/ 1000) {
+        _strokeFirstOnset = onset;
+      }
+      _strokeLastOnset = onset;
+      final before = max(
+        _strokeFirstOnset!,
+        onset - _maxLookBackMs * sampleRate ~/ 1000,
+      );
+      _captureQueue.add((onset, before));
+    }
+    _emitReadyCaptures();
 
     final cluster = strumClusterMs * sampleRate ~/ 1000;
     for (final onset in onsets) {
@@ -281,13 +323,8 @@ class ChordDetectionEngine {
       if (last == null || onset - last > cluster) {
         // A new strum: restart the post-strum analysis window and remember
         // what was already ringing.
-        _flushCapture();
         _strumStart = onset;
         _residual = _spectrumBefore(onset);
-        _captureDone = false;
-        _captureFrame = null;
-        _captureOnset = onset;
-        _captureResidual = _residual;
         _perfectRun = 0;
         _hitConsumed = false;
         _runChordId = null;
@@ -296,15 +333,53 @@ class ChordDetectionEngine {
     }
   }
 
-  /// Emits the pending capture of the current strum, if it has a frame.
-  void _flushCapture() {
-    final frame = _captureFrame;
-    final onset = _captureOnset;
-    if (_captureDone || frame == null || onset == null) return;
-    _captureDone = true;
-    _pendingCaptures.add(
-      StrumCapture(onsetSample: onset, frame: frame, residual: _captureResidual),
-    );
+  /// Builds the capture of every queued attack whose post-attack span
+  /// ([captureSamples] after a short skip of the pick noise) has arrived.
+  void _emitReadyCaptures() {
+    while (_captureQueue.isNotEmpty) {
+      final (onset, beforeEnd) = _captureQueue.first;
+      final postStart = onset + _attackSkipSamples;
+      final postEnd = postStart + captureSamples;
+      if (_clock < postEnd) break;
+      _captureQueue.removeAt(0);
+      final preStart = beforeEnd - _residualSamples;
+      // Skipped if its audio was already overwritten (a very long chunk).
+      if (_clock - postStart > _captureRingSize) continue;
+      final post = _captureSpan(postStart, captureSamples);
+      var sumSq = 0.0;
+      for (final v in post) {
+        sumSq += v * v;
+      }
+      final frame = SpectrumFrame(
+        magnitudes: _fft.computeMagnitudesOfTail(post, captureSamples),
+        fftSize: fftSize,
+        sampleRate: sampleRate.toDouble(),
+        inputLevel: sqrt(sumSq / captureSamples),
+      );
+      List<double>? residual;
+      if (preStart >= 0 && _clock - preStart <= _captureRingSize) {
+        residual = _fft.computeMagnitudesOfTail(
+          _captureSpan(preStart, _residualSamples),
+          _residualSamples,
+        );
+      }
+      _pendingCaptures.add(
+        StrumCapture(
+          onsetSample: onset,
+          strokeStartSample: beforeEnd,
+          frame: frame,
+          residual: residual,
+        ),
+      );
+    }
+  }
+
+  Float32List _captureSpan(int start, int length) {
+    final out = Float32List(length);
+    for (var i = 0; i < length; i++) {
+      out[i] = _captureRing[(start + i) % _captureRingSize];
+    }
+    return out;
   }
 
   static const int _residualSamples = 4096;
@@ -359,10 +434,6 @@ class ChordDetectionEngine {
       inputLevel: sqrt(sumSq / segment),
     );
 
-    if (strum != null && !_captureDone && segment < fftSize) {
-      _captureFrame = frame;
-      if (segment >= captureSamples) _flushCapture();
-    }
 
     final freePlay = _freePlay;
     final feedback = freePlay != null

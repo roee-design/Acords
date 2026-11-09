@@ -140,6 +140,20 @@ Float32List _render(
     final stopAt = at + chart.slotMs * 2.2 / 1000;
     events.addAll(stroke(synth, note, at, stopAt));
   }
+  // A string that is struck again stops its previous vibration.
+  final lastOnString = <int, int>{};
+  for (var i = 0; i < events.length; i++) {
+    final string = events[i].stringNumber;
+    if (string == null) continue;
+    final prev = lastOnString[string];
+    if (prev != null) {
+      final stop = events[prev].stopSec;
+      if (stop == null || stop > events[i].startSec) {
+        events[prev] = events[prev].copyWith(stopSec: events[i].startSec);
+      }
+    }
+    lastOnString[string] = i;
+  }
   return synth.render(events, durationSec: _durationSec(chart), mic: mic);
 }
 
@@ -244,3 +258,46 @@ final List<FpCase> fpCases = [
         soft: true));
   }, isControl: true),
 ];
+
+/// Indices of the notes that an FP case really plays wrong.
+Set<int> trulyWrongNotes(String caseId, RhythmChart chart, ChordCatalog catalog, int seed) {
+  final all = {for (final n in chart.notes) n.index};
+  int? expectedMidi(RhythmNote n, String chordId) {
+    final chord = catalog.chordById(chordId)!;
+    final s = n.stringNumber ?? 6;
+    var note = chord.isStringMuted(s) ? null : chord.noteForString(s);
+    note ??= chord.notes.first;
+    return note.midi;
+  }
+
+  switch (caseId) {
+    case 'wrong-chord':
+      const swap = {
+        'c_major': 'a_minor', 'a_minor': 'c_major', 'g_major': 'e_minor',
+        'e_minor': 'g_major', 'd_major': 'b_minor', 'f_major': 'd_minor',
+        'd_minor': 'f_major', 'b_minor': 'd_major',
+      };
+      return {
+        for (final n in chart.notes)
+          if (n.kind != PatternEventKind.finger ||
+              expectedMidi(n, chart.bars[n.barIndex].chordId) !=
+                  expectedMidi(n, swap[chart.bars[n.barIndex].chordId] ?? 'e_major'))
+            n.index,
+      };
+    case 'random-pluck-middle':
+      // Same random sequence as the scenario: one open string of 5–2 per note.
+      const open = {5: 45, 4: 50, 3: 55, 2: 59};
+      final rng = Random(seed);
+      final out = <int>{};
+      for (final n in chart.notes) {
+        final midi = open[2 + rng.nextInt(4)]!;
+        if (n.kind != PatternEventKind.finger ||
+            expectedMidi(n, chart.bars[n.barIndex].chordId) != midi) {
+          out.add(n.index);
+        }
+      }
+      return out;
+    default:
+      return all;
+  }
+}

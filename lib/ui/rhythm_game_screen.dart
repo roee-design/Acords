@@ -131,8 +131,8 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     final mic = _mode == GameInputMode.guitar;
     _judge = RhythmJudge(
       _chart,
-      perfectWindowMs: mic ? 80 : 70,
-      goodWindowMs: mic ? 170 : 140,
+      perfectWindowMs: mic ? GuitarStrokeReferee.perfectWindowMs : 70,
+      goodWindowMs: mic ? GuitarStrokeReferee.goodWindowMs : 140,
     );
     _trim = LatencyTrim();
     _referee = GuitarStrokeReferee(
@@ -373,11 +373,26 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     // of analysis (to check the notes) — a note must not be called missed
     // before its strum could possibly have arrived.
     final judgeDelay = _mode == GameInputMode.guitar
-        ? _calibration + _trim.correctionMs + 260
+        ? _calibration + _trim.correctionMs + GuitarStrokeReferee.judgeDelayMs
         : 30;
     final missed = _judge.advance(now - judgeDelay);
     if (missed.isNotEmpty) {
-      _popup('פספוס', AppColors.error, now);
+      // Missed although a stroke was heard → say what was wrong with it.
+      RhythmNote? wrong;
+      if (_mode == GameInputMode.guitar) {
+        for (final note in missed) {
+          if (_referee.resolveMissed(note)) wrong = note;
+        }
+      }
+      _popup(
+        wrong == null
+            ? 'פספוס'
+            : (wrong.kind == PatternEventKind.finger
+                ? 'צליל לא נכון'
+                : 'אקורד לא נכון'),
+        AppColors.error,
+        now,
+      );
       setState(() {});
     }
 
@@ -413,17 +428,9 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     final decision = _referee.onCapture(heard, e.capture, nowMs: now);
     _diagnostics?.decision(decision);
     switch (decision.outcome) {
-      case CaptureOutcome.wrongNotes:
-        _popup(
-          decision.note!.kind == PatternEventKind.finger
-              ? 'צליל לא נכון'
-              : 'אקורד לא נכון',
-          AppColors.error,
-          now,
-        );
-        setState(() {});
       case CaptureOutcome.hit:
         _present(decision.input!, now);
+      case CaptureOutcome.wrongNotes:
       case CaptureOutcome.notFresh:
       case CaptureOutcome.unanchored:
       case CaptureOutcome.noNote:

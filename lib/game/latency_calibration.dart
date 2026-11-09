@@ -41,28 +41,52 @@ class LatencyCalibrator {
   final double maxLatencyMs;
   final double earlyToleranceMs;
 
-  final List<double> _offsets = [];
-  final Set<int> _usedBeats = {};
+  /// Candidate attacks per pulse: (offset from the pulse, attack strength).
+  final Map<int, List<(double, double)>> _byBeat = {};
 
-  int get count => _offsets.length;
+  /// Pulses for which at least one attack was heard.
+  int get count => _byBeat.length;
 
-  /// Adds a strum heard at [heardMs] (same clock as the pulses). Returns the
-  /// measured offset, or null when it matches no pulse.
-  double? addStrum(double heardMs) {
+  /// Adds an attack heard at [heardMs] (same clock as the pulses), with how
+  /// clearly it was a new stroke ([weight], see
+  /// `StrokeVerifier.attackStrength`). Returns its offset from the pulse, or
+  /// null when it matches no pulse.
+  ///
+  /// One strum is usually heard as several attacks (its strings, the room's
+  /// echo), and a ringing chord produces weak false ones. Per pulse the
+  /// estimate uses the *earliest of the strong* attacks — at least 70 % as
+  /// strong as the strongest for that pulse.
+  double? addStrum(double heardMs, {double weight = 1}) {
     final beat = ((heardMs - maxLatencyMs) / beatMs).ceil();
     final beatTime = beat * beatMs;
     final offset = heardMs - beatTime;
     if (beat < firstCountedBeat) return null;
     if (offset < -earlyToleranceMs || offset > maxLatencyMs) return null;
-    // One strum per pulse (a strum can be detected twice).
-    if (!_usedBeats.add(beat)) return null;
-    _offsets.add(offset);
+    _byBeat.putIfAbsent(beat, () => []).add((offset, weight));
     return offset;
   }
 
+  List<double> get _offsets {
+    final out = <double>[];
+    for (final candidates in _byBeat.values) {
+      var strongest = 0.0;
+      for (final c in candidates) {
+        strongest = max(strongest, c.$2);
+      }
+      double? earliest;
+      for (final c in candidates) {
+        if (c.$2 >= 0.7 * strongest && (earliest == null || c.$1 < earliest)) {
+          earliest = c.$1;
+        }
+      }
+      if (earliest != null) out.add(earliest);
+    }
+    return out;
+  }
+
   LatencyEstimate? estimate() {
-    if (_offsets.isEmpty) return null;
-    final sorted = [..._offsets]..sort();
+    final sorted = _offsets..sort();
+    if (sorted.isEmpty) return null;
     final median = sorted[sorted.length ~/ 2];
     final deviations = [for (final o in sorted) (o - median).abs()]..sort();
     final mad = deviations[deviations.length ~/ 2];

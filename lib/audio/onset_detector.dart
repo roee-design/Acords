@@ -110,10 +110,17 @@ class OnsetDetector {
         sampleRate: sampleRate,
         minLevel: 0.005,
         fluxThreshold: 0.09,
-        refractoryMs: 130,
+        // Candidates are cheap: each one is verified on its own spectrum, so
+        // a short refractory only merges the strings of one strum. (With the
+        // old 130 ms a false attack on a ringing chord blocked the real strum
+        // right after it — the most common reason real strums were lost in
+        // the phone simulation.)
+        refractoryMs: 58,
         attackFluxThreshold: 0.04,
         attackRiseRatio: 1.1,
         noiseGateRatio: 3,
+        // A soft stroke over a loud, decaying chord does not raise the level.
+        energyRiseRatio: 0,
         minRiseFraction: 0.2,
       );
 

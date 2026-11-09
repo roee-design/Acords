@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:chord_trainer/audio/chord_detection_engine.dart';
 import 'package:chord_trainer/audio/detection_diagnostics.dart';
 import 'package:chord_trainer/audio/onset_detector.dart';
+import 'package:chord_trainer/chord/chord_matcher.dart';
 import 'package:chord_trainer/game/guitar_stroke_referee.dart';
 import 'package:chord_trainer/game/rhythm_chart.dart';
 import 'package:chord_trainer/game/rhythm_judge.dart';
@@ -65,6 +66,10 @@ GameRunResult replayGame({
   required double chartStartMs,
   double calibrationMs = 0,
   int sampleRate = 44100,
+  void Function(CaptureDecision decision, ChordMatchRecord? match)? onDecision,
+  void Function(CaptureDecision decision, StrumCapture capture)? onCapture,
+  void Function(OnsetHopRecord record)? onHop,
+  StrokeVerifier Function(ChordMatcher matcher)? verifierFactory,
 }) {
   final engine = ChordDetectionEngine(
     sampleRate: sampleRate,
@@ -78,6 +83,7 @@ GameRunResult replayGame({
   final hop = engine.onsetDetector.onHop!;
   engine.onsetDetector.onHop = (r) {
     hop(r);
+    onHop?.call(r);
     if (r.onset) onsets++;
     if (r.isPeak && !r.onset) {
       for (final reason in r.rejectReasons) {
@@ -86,10 +92,23 @@ GameRunResult replayGame({
     }
   };
 
-  final judge = RhythmJudge(chart, perfectWindowMs: 80, goodWindowMs: 170);
+  // The matcher's analysis of the strum a decision was based on.
+  ChordMatchRecord? lastMatch;
+  final innerEvaluate = engine.matcher.onEvaluate;
+  engine.matcher.onEvaluate = (r) {
+    innerEvaluate?.call(r);
+    lastMatch = r;
+  };
+
+  final judge = RhythmJudge(
+    chart,
+    perfectWindowMs: GuitarStrokeReferee.perfectWindowMs,
+    goodWindowMs: GuitarStrokeReferee.goodWindowMs,
+  );
   final referee = GuitarStrokeReferee(
     judge: judge,
-    verifier: StrokeVerifier(engine.matcher, referenceA4Hz: catalog.referenceA4Hz),
+    verifier: verifierFactory?.call(engine.matcher) ??
+        StrokeVerifier(engine.matcher, referenceA4Hz: catalog.referenceA4Hz),
     chordForBar: (i) => catalog.chordById(chart.bars[i].chordId),
   );
   final outcomes = <CaptureOutcome, int>{};
@@ -113,14 +132,24 @@ GameRunResult replayGame({
       final heard = c.onsetSample * 1000 / sampleRate - chartStartMs - calibrationMs;
       // Like the screen: strokes arriving during the count-in are ignored.
       if (now < 0) continue;
+      lastMatch = null;
       final d = referee.onCapture(heard, c, nowMs: now);
+      onDecision?.call(d, lastMatch);
+      onCapture?.call(d, c);
       diag.decision(d);
       decisions.add(d);
       outcomes[d.outcome] = (outcomes[d.outcome] ?? 0) + 1;
     }
-    judge.advance(now - calibrationMs - referee.trim.correctionMs - 260);
+    judge
+        .advance(
+          now -
+              calibrationMs -
+              referee.trim.correctionMs -
+              GuitarStrokeReferee.judgeDelayMs,
+        )
+        .forEach(referee.resolveMissed);
   }
-  judge.advance(double.infinity);
+  judge.advance(double.infinity).forEach(referee.resolveMissed);
   diag.detach();
   return GameRunResult(
     judge: judge,

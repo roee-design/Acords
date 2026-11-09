@@ -8,6 +8,7 @@ import '../audio/audio_analyzer.dart';
 import '../audio/mic_capture_guard.dart';
 import '../audio/onset_detector.dart';
 import '../game/latency_calibration.dart';
+import '../game/stroke_verifier.dart';
 import '../models/chord_definition.dart';
 import '../services/progress_service.dart';
 import 'app_theme.dart';
@@ -39,6 +40,10 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
   final AudioAnalyzer _analyzer =
       AudioAnalyzer(onsetDetector: OnsetDetector.forRhythmGame());
   StreamSubscription<DateTime>? _onsetSub;
+  StreamSubscription<TimedStrumCapture>? _captureSub;
+
+  /// Attacks weaker than this are a ringing chord or noise, not a strum.
+  static const double _minAttackStrength = 0.3;
   StreamSubscription<dynamic>? _levelSub;
 
   var _phase = _CalPhase.intro;
@@ -60,6 +65,8 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
 
   Future<void> _stopMic() async {
     await _onsetSub?.cancel();
+    await _captureSub?.cancel();
+    _captureSub = null;
     await _levelSub?.cancel();
     _onsetSub = null;
     _levelSub = null;
@@ -82,6 +89,7 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
       );
       await _analyzer.start();
       _onsetSub = _analyzer.onsetStream.listen(_onOnset);
+      _captureSub = _analyzer.strumCaptureStream.listen(_onCapture);
       _levelSub = _analyzer.feedbackStream.listen((f) => _level = f.inputLevel);
     } catch (e) {
       MicCaptureGuard.instance.release(this);
@@ -99,11 +107,21 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
     _ticker.start();
   }
 
+  /// Any attack: only drives the "heard" flash.
   void _onOnset(DateTime at) {
     if (_phase != _CalPhase.running) return;
-    final heard = at.difference(_startWall).inMicroseconds / 1000.0;
     _lastHeard = _now;
-    _cal.addStrum(heard);
+  }
+
+  /// An attack with its spectrum: measured only if it is clearly a new
+  /// stroke, weighted by how clear.
+  void _onCapture(TimedStrumCapture e) {
+    if (_phase != _CalPhase.running) return;
+    final strength =
+        StrokeVerifier.attackStrength(e.capture.frame, e.capture.residual);
+    if (strength < _minAttackStrength) return;
+    final heard = e.at.difference(_startWall).inMicroseconds / 1000.0;
+    _cal.addStrum(heard, weight: strength);
   }
 
   void _onTick(Duration _) {

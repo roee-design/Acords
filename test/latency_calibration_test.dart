@@ -26,9 +26,24 @@ void main() {
     expect(cal.addStrum(0 * beat + 200), isNull); // warm-up
     expect(cal.addStrum(1 * beat + 200), isNull); // warm-up
     expect(cal.addStrum(2 * beat + 200), 200);
-    expect(cal.addStrum(2 * beat + 330), isNull); // same pulse twice
+    // A second, weaker attack for the same pulse is kept as a candidate but
+    // the estimate uses the earliest strong one.
+    expect(cal.addStrum(2 * beat + 330, weight: 0.4), closeTo(330, 1e-6));
     expect(cal.addStrum(3 * beat + 700), isNull); // beyond max latency
     expect(cal.count, 1);
+    expect(cal.estimate()!.latencyMs, 200);
+  });
+
+  test('a weak false attack before the strum does not win the pulse', () {
+    final cal = LatencyCalibrator(beatMs: beat);
+    for (var k = 2; k < 12; k++) {
+      cal.addStrum(k * beat + 180 - 90, weight: 0.35); // ringing chord
+      cal.addStrum(k * beat + 180, weight: 1.2); // the strum
+      cal.addStrum(k * beat + 180 + 58, weight: 1.0); // its later strings
+    }
+    final e = cal.estimate()!;
+    expect(e.latencyMs, 180);
+    expect(e.isReliable, isTrue);
   });
 
   test('inconsistent strumming is not trusted', () {

@@ -59,8 +59,9 @@ void main() {
     _outDir.createSync(recursive: true);
     final report = StringBuffer()
       ..writeln('False-positive bench — ${DateTime.now().toIso8601String()}')
-      ..writeln('accuracy = what the game shows at the end; for every non-control '
-          'case it should be ~0%.')
+      ..writeln('controls: accuracy the game shows. Other cases: share of the '
+          'notes that were really played wrong (or not at all) and still '
+          'counted — should be ~0%.')
       ..writeln();
     for (final chartEntry in charts.entries) {
       final chart = chartEntry.value;
@@ -82,9 +83,23 @@ void main() {
             catalog: catalog,
             chartStartMs: fpChartStartSec * 1000,
           );
-          accSum += r.accuracy;
-          hits += r.hits;
-          notes += chart.notes.length;
+          if (c.isControl) {
+            accSum += r.accuracy;
+            hits += r.hits;
+            notes += chart.notes.length;
+          } else {
+            // Only notes that were really played wrong count: a random pluck
+            // or the "wrong" chord can contain the expected note.
+            final wrongNotes = trulyWrongNotes(c.id, chart, catalog, seed);
+            var accepted = 0;
+            for (final i in wrongNotes) {
+              final res = r.judge.results[i];
+              if (res != null && res.judgement.name != 'miss') accepted++;
+            }
+            accSum += wrongNotes.isEmpty ? 0 : accepted / wrongNotes.length;
+            hits += accepted;
+            notes += wrongNotes.length;
+          }
           wrong += r.judge.wrongNotes;
           onsets += r.onsets;
           r.outcomes.forEach((k, v) => outcomes[k] = (outcomes[k] ?? 0) + v);

@@ -81,6 +81,12 @@ class ChordMatcher {
     );
   }
 
+  /// [allowedExtraHz]: fundamentals of notes that may ring without counting
+  /// as foreign (the rhythm game passes open strings that belong to the
+  /// chord). [residualGrowth]: a foreign peak that was already ringing before
+  /// the strum is ignored unless it grew by more than this factor (1.6 lets a
+  /// previous chord die away; the rhythm game uses 1.15 so that a wrong
+  /// string that is struck again and again is still caught).
   /// [residual]: spectrum captured just before the latest strum (same
   /// scale as [frame]). A peak that was already ringing then and has not grown
   /// is the previous chord dying away, not a note of this strum, so it does not
@@ -90,6 +96,8 @@ class ChordMatcher {
     required SpectrumFrame frame,
     required double referenceA4Hz,
     List<double>? residual,
+    List<double> allowedExtraHz = const [],
+    double residualGrowth = 1.6,
   }) {
     final inputLevel = frame.inputLevel;
     if (inputLevel < minimumDetectionInputLevel || frame.bandPeak <= 0) {
@@ -224,6 +232,8 @@ class ChordMatcher {
       fundamentals.values.toList(),
       shift,
       residual,
+      residualGrowth,
+      allowedExtraHz,
     );
     String? extraMessage;
     if (extra != null) {
@@ -314,6 +324,8 @@ class ChordMatcher {
     List<double> fundamentals,
     double shiftCents,
     List<double>? residual,
+    double residualGrowth,
+    List<double> allowedExtraHz,
   ) {
     final minLevel = max(
       frame.bandPeak * _dbToRatio(extraNoteRelativeDb),
@@ -332,6 +344,23 @@ class ChordMatcher {
           break;
         }
       }
+      if (!explained) {
+        // A tolerated extra string explains its own note and octaves; its
+        // other overtones only while they are weak (≥ 10 dB below the
+        // strongest component). A strong peak there is a string of its own:
+        // the 3rd harmonic of a low E is the note of the open B string.
+        final weak = peak.magnitude < frame.bandPeak * 0.32;
+        for (final f0 in allowedExtraHz) {
+          final f = f0 * shiftRatio;
+          final k = (peak.hz / f).round();
+          if (k < 1 || k > 14) continue;
+          if (!(k == 1 || k == 2 || k == 4 || weak)) continue;
+          if ((peak.hz - k * f).abs() <= _toleranceHz(frame, k * f, 45)) {
+            explained = true;
+            break;
+          }
+        }
+      }
       if (!explained && residual != null) {
         var before = 0.0;
         for (var b = max(0, peak.bin - 1);
@@ -339,7 +368,7 @@ class ChordMatcher {
             b++) {
           before = max(before, residual[b]);
         }
-        if (peak.magnitude <= before * 1.6) explained = true;
+        if (peak.magnitude <= before * residualGrowth) explained = true;
       }
       if (!explained) return peak;
     }

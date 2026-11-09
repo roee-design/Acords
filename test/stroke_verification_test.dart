@@ -73,7 +73,7 @@ void main() {
     expect(idleAccepts(noise, chords.first, fromSec: 0).$2, 0);
   });
 
-  test('↑ and i/m/a need a recent hit (a ringing chord cannot score alone)', () {
+  test('a missed note can be flagged as wrong notes; a hit note cannot', () {
     final pattern = StrummingPattern.fromJson({
       'id': 't',
       'name': 't',
@@ -88,14 +88,15 @@ void main() {
       rounds: 1,
     );
     final judge = RhythmJudge(chart);
-    final firstUp = chart.notes[1];
-    expect(judge.hasRecentHitBefore(firstUp, chart.beatMs), isFalse);
     judge.input(chart.notes[0].timeMs);
-    expect(judge.hasRecentHitBefore(firstUp, chart.beatMs), isTrue);
-    // A wrong-notes stroke is a miss and breaks the combo.
-    judge.markWrongNotes(chart.notes[2], chart.notes[2].timeMs);
-    expect(judge.results[2]!.judgement, Judgement.miss);
+    // Note 1 is never hit: its window passes.
+    final missed = judge.advance(chart.notes[1].timeMs + 500);
+    expect(missed.map((n) => n.index), [1]);
+    judge.flagWrongNotes(chart.notes[1]);
+    judge.flagWrongNotes(chart.notes[1]); // idempotent
+    judge.flagWrongNotes(chart.notes[0]); // a hit stays a hit
+    expect(judge.results[1]!.wrongNotes, isTrue);
+    expect(judge.results[0]!.judgement, isNot(Judgement.miss));
     expect(judge.wrongNotes, 1);
-    expect(judge.combo, 0);
   });
 }

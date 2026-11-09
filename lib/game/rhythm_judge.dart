@@ -190,20 +190,20 @@ class RhythmJudge {
     return true;
   }
 
-  /// Number of strokes heard at a note's time with the wrong notes.
+  /// Number of missed notes at whose time the mic heard the wrong notes.
   int wrongNotes = 0;
 
-  /// The player strummed at [note]'s time but the mic heard the wrong notes
-  /// (no chord held, wrong strings): the note counts as missed.
-  void markWrongNotes(RhythmNote note, double atMs) {
-    if (results.containsKey(note.index)) return;
+  /// Marks an already-missed [note] as "played, but with the wrong notes"
+  /// (no chord held, wrong strings). No effect on a note that was hit.
+  void flagWrongNotes(RhythmNote note) {
+    final r = results[note.index];
+    if (r == null || r.judgement != Judgement.miss || r.wrongNotes) return;
     results[note.index] = NoteResult(
       judgement: Judgement.miss,
-      atMs: atMs,
+      atMs: r.atMs,
       wrongNotes: true,
     );
     wrongNotes++;
-    combo = 0;
   }
 
   /// Unjudged note closest to [timeMs] within the good window, if any.
@@ -221,20 +221,6 @@ class RhythmJudge {
       }
     }
     return best;
-  }
-
-  /// True when some note in the [windowMs] before [note] was hit — i.e. the
-  /// player is actively playing. ↑ strums and i/m/a notes need this: a chord
-  /// left ringing can look like a soft ↑ to the mic, but never like the ↓
-  /// (or thumb) that always precedes them when someone really plays.
-  bool hasRecentHitBefore(RhythmNote note, double windowMs) {
-    for (var i = note.index - 1; i >= 0; i--) {
-      final prev = chart.notes[i];
-      if (note.timeMs - prev.timeMs > windowMs) break;
-      final r = results[prev.index];
-      if (r != null && r.judgement != Judgement.miss) return true;
-    }
-    return false;
   }
 
   /// Adds a bonus (e.g. chord confirmed for a bar).
