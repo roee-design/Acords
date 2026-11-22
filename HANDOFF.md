@@ -1,8 +1,15 @@
 # מסמך מסירה — Chord Trainer (Acords)
 
-מסמך עבודה שוטף למפתח / AI. **כל שינוי, באג או פיצ'ר מעתה מתועדים כאן בלבד.**
+מסמך עבודה שוטף למפתח / AI. **כל שינוי, באג או פיצ'ר מתועדים כאן בלבד.**
+עודכן לאחרונה: **2026-11-22** (מסמך מלא — כל מה שנעשה עד עכשיו).
 
-**נתיב הפרויקט:** `c:\Users\Fisher-home\Desktop\chords`
+| | |
+|---|---|
+| **ריפו** | `https://github.com/roee-design/Acords` |
+| **ענף העבודה** | `feature/detection-progress-content` (לא מוזג ל-`master`) |
+| **עותק עבודה במחשב הזה** | `C:\Users\noam1\Acords\.claude\worktrees\detection-progress` (worktree של `C:\Users\noam1\Acords`) |
+| **עותק היסטורי** | `c:\Users\Fisher-home\Desktop\chords` (המחשב הקודם) |
+| **APK דיבאג אחרון** | `C:\Users\noam1\Downloads\acords_debug_1.0.2_1_guitar-sim-calibrated.apk` |
 
 > **Release נעול:** `HANDOFF_2.md` + `releases/acords_v1.0.1.apk` = snapshot רשמי של **v1.0.1 (+1)**. **אין לערוך את `HANDOFF_2.md`.**
 
@@ -10,6 +17,25 @@
 
 1. בונים **APK דיבאג** → `build/app/outputs/flutter-apk/app-debug.apk` (לא מעתיקים ל־`releases/`).
 2. מעדכנים את **`HANDOFF.md`** בלבד (מצב נוכחי + Build history).
+3. **לא משנים ספי זיהוי בניחוש.** כל שינוי בזיהוי נמדד קודם בספסל (`test/bench`, סעיף 15) ואם יש — מול הקלטה אמיתית ממצב אבחון.
+
+---
+
+## תקציר מנהלים — מה האפליקציה עושה היום
+
+אפליקציית Flutter בעברית ללימוד גיטרה, ששומעת את הנגינה דרך המיקרופון:
+
+- **אימון אקורד בודד** — 52 אקורדים ב-5 רמות, משוב לכל מיתר (מדויק / חלש / חסר / צליל זר).
+- **אתגר האקורדים** — 30 שניות, ניקוד, רצפים, שיאים.
+- **זיהוי חופשי** — מנגנים מה שרוצים, האפליקציה מזהה את האקורד.
+- **ספריית אקורדים** — דיאגרמות עם מספרי אצבעות, השמעת אקורד, כוכבי שליטה.
+- **שירים** — 17 שירים (9 עם מילים מלאות מנחלת הכלל), חיפוש, סינון עברית/אנגלית, ז׳אנרים, רמות.
+- **לימוד פריטות** — 11 דפוסים; לכל דפוס אנימציית גיטרה מתקרבת, משחק קצב ב-3 מהירויות ושיר לדוגמה.
+- **משחק קצב** — פריטות מתקרבות על מסלול; משחקים בהחלקה על המסך או **עם גיטרה אמיתית** (המיקרופון בודק תזמון *וגם* שהצלילים נכונים).
+- **טיונר** — YIN + חידוד ספקטרלי, דיוק ±1¢ בסימולציה.
+- **מעקב התקדמות** — רמת שליטה לכל אקורד, רצף ימים, «המשך מאיפה שהפסקת».
+
+**מצב:** כל הבדיקות האוטומטיות עוברות; הזיהוי נבדק ב**סימולציה** מקיפה — **עדיין לא אומת מול הקלטות אמיתיות** (ראו סעיף 16).
 
 ---
 
@@ -19,25 +45,21 @@
 |-----|-----|
 | גרסת פיתוח (`pubspec.yaml`) | `1.0.2+1` |
 | Release יציב (נעול) | `1.0.1+1` → `releases/acords_v1.0.1.apk` (~48.9MB) — ראו `HANDOFF_2.md` |
-| APK דיבאג | `build/app/outputs/flutter-apk/app-debug.apk` |
-| סביבת עבודה | Flutter 3.47.5 + JDK 17 + Android SDK ב־`Fisher-home\Desktop\chords` (2026-09-25) |
-| סבב נוכחי | **מנוע זיהוי חדש** (מבוסס פריטה, מעברים), טיונר YIN, **מעקב התקדמות**, תוכן: 52 אקורדים / 17 שירים / 11 דפוסים |
-| ענף | `feature/detection-progress-content` |
+| APK דיבאג | `build/app/outputs/flutter-apk/app-debug.apk` (~183MB) |
+| סביבה | Flutter (D:\downloads\flutter\flutter) + JDK של Android Studio (`D:\Program Files\Android\Android Studio\jbr`) |
+| בדיקות | `flutter test` — **35 עוברות**, 9 ספסלים מדולגים (`--run-skipped`) |
+| קומיט אחרון | `cb102bb` — Guitar mode: calibrate against a realistic player/phone simulation |
 
-### כיוון ארכיטקטורה נוכחי (`1.0.2+1`)
+### סבבי העבודה מאז v1.0.1 (לפי סדר)
 
-1. **מעברי אקורדים מוקפאים** — הוסרו ממסך הבית ומהניווט; `lib/ui/chord_transitions_screen.dart` נשאר בקוד אך לא נטען (אין טיימרים ברקע).
-2. **קטלוג לפי רמת קושי** — `difficulty` (1–5) + `category` לכל אקורד; **52 אקורדים** ב־`assets/chords.json` (כולל גרסאות בארה בצוואר גבוה: `A · בארה`, `Am · בארה`, `G · בארה`, `C · בארה`, `Dm · בארה`).
-3. **ספרייה + אימון** — סינון/טאבים לפי 5 רמות; באימון FilterChips לרמה + דרופדאון מסונן.
-4. **דיאגרמת אקורדים** — מספר אצבע על הסריג (1–4), מספרי סריג בצד, חלון מתחיל מסריג 2/3 כשצריך, תוויות מיתר `6·E`…`1·e` מתחת.
-5. **טיונר** — פריסה ללא גלילה: `Column` + `Expanded` (תו flex:2, מד flex:5, תחתית flex:2).
-6. **אתגר האקורדים** — שיא עם ציון שליטה; SFX; מתקדם על `hitStream` (פגיעה = פריטה חדשה + אישור), בלי grace.
-7. **מנוע זיהוי (`ChordDetectionEngine`)** — ראו סעיף 6. כל המסכים (אימון, אתגר, שירים, מסלול מודרך, פריטות, זיהוי חופשי) מתקדמים על `AudioAnalyzer.hitStream` ולא על "פריים perfect ראשון".
-9. **מעקב התקדמות (`ProgressService`)** — SharedPreferences (`acords_progress_v1`): פגיעות לכל אקורד + ימי תרגול → שליטה (התחלה ≥1 / בתרגול ≥5 / בשליטה ≥15 ב־2 ימים לפחות); רמה+אקורד אחרונים; שלב במסלול המודרך + השלמות לכל שיר; שלב לכל דפוס פריטה; רצף ימים. מוצג: כרטיס «ההתקדמות שלך» בבית (כולל «המשך מאיפה שהפסקת»), כוכבים בספרייה, תגיות ברשימת שירים/דפוסים.
-11. **לימוד פריטות = משחק** — רשימת דפוסים → `StrumLessonScreen` (אנימציה, 3 מהירויות נפתחות בכוכב, שיר לדוגמה). המסלול המודרך הישן (`_PatternGuidedPathScreen`) הוסר. `song_guided_path_screen.dart` עדיין לא מחובר לשום מסך.
-12. **ספריית שירים** — `SongDefinition.language` (`he`/`en`), `genre` (`SongGenres`), `SongLine.section`. מילים לא הורחבו ל«התקווה» (אין אקורדים מאומתים לבית 2), House of the Rising Sun, «יונתן הקטן» (©), Dylan/Beatles (©).
-10. **מעברי אקורדים** — לא חוזרים כמסך נפרד; היכולת עצמה (זיהוי החלפת אקורד אחרי פריטה) מובנית במנוע ומשמשת שירים/פריטות.
-8. **שירים ופריטות** — טאב «שירים» בניווט התחתון (נגן חופשי: אקורדים/BPM/פריטה/מילים PD); מסך בית → **לימוד פריטות** (6 דפוסים ב־`strum_patterns.json`, מסלול 3 שלבים); `StrumPreviewService` = mediaPlayer + WAV זמני + seek/resume + ארפג׳ו pitched; instrumental = תיבות `| C | G |` בלי מילים מזויפות.
+1. **2026-10-12 — מנוע זיהוי חדש** — `ChordDetectionEngine` (שעון דגימות), `OnsetDetector` (spectral flux), `ChordMatcher` יחסי עם דחיית צליל זר, פגיעה = פריטה חדשה + 2 פריימים מושלמים; טיונר YIN; `ProgressService`; +22 אקורדים, +8 שירים, +5 דפוסים; ספסל סינתטי.
+2. **2026-10-13 — תיקון קריסה בפתיחה** — `MainActivity.kt` הוסתר ע״י כלל `chord_trainer/` ב-`.gitignore`; הכלל עוגן ל-`/chord_trainer/`.
+3. **2026-10-14 — משחק קצב + שיעורי פריטה + ספריית שירים** — `RhythmGameScreen`, `StrumLessonScreen` + `GuitarStrumAnimation`, חיפוש/ז׳אנרים/שפה, מילים מלאות, ערכת נושא אינדיגו/סגול.
+4. **2026-10-16 — מצב גיטרה, פריטות רכות** — `OnsetDetector.forRhythmGame`, מד מיקרופון, «נשמע!».
+5. **2026-10-23 — מסך כיול מיקרופון** — `MicCalibrationScreen`, `LatencyCalibrator`; הוסר כיול-בספירה וכיול אוטומטי שהצטבר.
+6. **2026-10-27 — אימות תוכן לכל פריטה** — `StrumCapture` + `StrokeVerifier` (פריטה אקראית בלי אקורד קיבלה קודם 72%); תיקון: פספוס הוכרז לפני שהאודיו הגיע.
+7. **2026-11-01 — אבחון ומדידה** — לוגים מובנים, `GuitarStrokeReferee`, מצב אבחון (WAV+JSON), ספסל זיהויי שווא. בלי שינוי התנהגות.
+8. **2026-11-09 — כיול מול סימולציה מציאותית** — `realistic_sim.dart` + `mic_deviation_bench`; נגינה נכונה בפריטה 58%→83%, כיול אמין 16/16.
 
 ---
 
@@ -96,64 +118,113 @@
 
 ---
 
-## 1. מה זו האפליקציה
+---
 
-אפליקציית Flutter לאימון אקורדים בגיטרה. מאזינה למיקרופון, מריצה FFT, ומשווה את הצליל לאקורדים מ־`assets/chords.json`.
+## 1. מה זו האפליקציה
 
 | שדה | ערך |
 |-----|-----|
-| שם | Chord Trainer |
+| שם | Chord Trainer (Acords) |
 | package | `chord_trainer` |
 | Android id | `com.chordtrainer.chord_trainer` |
 | גרסה | `1.0.2+1` (פיתוח) |
-| UI | עברית, RTL (`he_IL`) |
-| מצב | **פיתוח** — Release נעול: `releases/acords_v1.0.1.apk` (v1.0.1+1) — ראו `HANDOFF_2.md` |
-
-**אין** Riverpod / Bloc / Provider — רק `StatefulWidget` + streams.
+| UI | עברית, RTL (`he_IL`); ערכת נושא כהה אינדיגו/סגול |
+| ניהול מצב | **אין** Riverpod / Bloc / Provider — רק `StatefulWidget` + streams + `ChangeNotifier` (`ProgressService`) |
 
 ---
 
 ## 2. Tech stack
 
-- Dart `^3.12.0`, Flutter 3.12+
-- `record` — PCM16 מהמיקרופון
+- Dart `^3.12.0`, Flutter 3.4x
+- `record` — PCM16 מונו 44.1kHz מהמיקרופון (בלי AGC / echo cancel / noise suppress)
 - `fftea` — FFT
 - `permission_handler` — הרשאת מיקרופון
-- `audioplayers` — נשאר בפרויקט (מטרונום למסך מעברים המוקפא); לא בשימוש בניווט הנוכחי
+- `audioplayers` — SFX, השמעת אקורדים, צלילי משחק (mediaPlayer + WAV זמני + seek/resume)
+- `path_provider` — WAV זמניים, שמירת קבצי אבחון
+- `shared_preferences` — שיאים, התקדמות, כיול
+- `wakelock_plus` — מסך דולק במשחקים
 
 ---
 
-## 3. מבנה `lib/`
+## 3. מבנה הקוד
 
 ```
 lib/
-  main.dart
-  models/          chord_definition.dart (difficulty/category/finger), feedback_result.dart
-  services/        chord_catalog_service.dart
-  audio/           audio_analyzer, pitch_tuner, fft_processor, ring_buffer, frequency_utils
-  chord/           chord_matcher.dart
-  ui/              מסכים + widgets (fretboard, tuner gauge, help, confetti…)
-                   chord_transitions_screen.dart — מוקפא, לא מנווטים אליו
+  main.dart                       טעינת קטלוג + ProgressService.load() → MainShell
+  models/
+    chord_definition.dart         ChordDefinition / ChordNote / ChordCatalog, pitchClasses, soundsLike
+    feedback_result.dart          ChordFeedback / StringFeedback / NoteStatus (+ extraNote, tuningShift)
+    song_definition.dart          SongDefinition (language, genre), SongLine (section), SongGenres
+    strumming_pattern.dart        StrummingPattern / PatternEvent (↓ ↑ ✕ - p i m a), exampleSongId
+  audio/
+    audio_analyzer.dart           מיקרופון → מנוע; feedbackStream / hitStream / onsetStream / strumCaptureStream; הקלטה לאבחון
+    chord_detection_engine.dart   מנוע זיהוי על שעון דגימות; ChordHit; StrumCapture לכל התקפה
+    onset_detector.dart           זיהוי פריטה (flux + שער רעש); preset forRhythmGame; OnsetHopRecord לאבחון
+    spectrum_frame.dart           ספקטרום + bandPeak + noiseFloor + peaks
+    fft_processor.dart            FFT, computeMagnitudesOfTail (חלון חלקי)
+    pitch_tuner.dart, yin_pitch.dart   טיונר
+    detection_diagnostics.dart    לוגים [Acords Diag] + שמירת WAV/JSON/log
+    game_sound_service.dart       צלילי משחק (Karplus–Strong לכל אקורד, טיק, השתקה)
+    strum_preview_service.dart, chord_audio_service.dart, blitz_sfx_service.dart, mic_capture_guard.dart
+  chord/
+    chord_matcher.dart            התאמת ספקטרום לאקורד; ChordMatchRecord לאבחון
+  game/
+    rhythm_chart.dart             תווים + תיבות לסיבוב (דפוס או שיר)
+    rhythm_judge.dart             שיפוט תזמון, קומבו, ניקוד, כוכבים
+    stroke_verifier.dart          בדיקת *מה* נוגן בכל פריטה (מצב גיטרה)
+    guitar_stroke_referee.dart    שיפוט מצב גיטרה ללא UI (משותף לאפליקציה ולספסל)
+    latency_calibration.dart      LatencyCalibrator (מסך כיול) + LatencyTrim (תיקון קטן תוך משחק)
+    rhythm_game_painter.dart      ציור מסלול המשחק
+  services/
+    progress_service.dart         התקדמות, כוכבי משחק, כיול מיקרופון (SharedPreferences)
+    chord_catalog_service.dart, song_catalog_service.dart, strum_pattern_catalog_service.dart, blitz_prefs.dart
+  ui/
+    main_shell.dart               5 טאבים
+    home_screen.dart              כרטיס התקדמות + כניסה לאימון / אתגר / פריטות
+    practice_screen.dart, chord_blitz_screen.dart, free_play_screen.dart, chord_library_screen.dart, tuner_screen.dart
+    song_practice_screen.dart     ספריית שירים (חיפוש/שפה/ז׳אנר/רמה)
+    song_player_screen.dart       נגן שיר + כפתור «משחק קצב»
+    strumming_learning_screen.dart  רשימת דפוסים
+    strum_lesson_screen.dart      שיעור: אנימציה → 3 מהירויות → שיר לדוגמה
+    rhythm_game_screen.dart       משחק הקצב (מסך / גיטרה, כיול, אבחון)
+    mic_calibration_screen.dart   כיול השהיית מיקרופון
+    widgets/                      guitar_strum_animation, chord_fretboard_chart, progress_card, mastery_badge, …
+    chord_transitions_screen.dart, song_guided_path_screen.dart   — לא מחוברים לניווט (קוד ישן)
 ```
 
 ---
 
 ## 4. ניווט
 
-| # | מסך | mic | isActive |
-|---|-----|-----|----------|
-| 0 | Home | לא | — |
-| 1 | FreePlay | כן | `_selectedIndex == 1` |
-| 2 | Library | לא | — |
-| 3 | Tuner | כן | `_selectedIndex == 3` |
+| # | טאב | מיקרופון |
+|---|-----|----------|
+| 0 | בית | לא |
+| 1 | זיהוי חופשי | כן (`isActive`) |
+| 2 | אקורדים (ספרייה) | לא |
+| 3 | שירים | בתוך הנגן |
+| 4 | טיונר | כן (`isActive`) |
 
-**Push מבית:** `PracticeScreen` בלבד.
-
-**מוקפא (לא ב־UI):** `ChordTransitionsScreen` — הקובץ קיים; אין כניסה מהבית/טאבים.
+**מהבית (push):** אימון אקורד בודד · אתגר האקורדים · לימוד פריטות → שיעור → משחק קצב / כיול.
+**מהשירים:** נגן שיר → «משחק קצב».
+**לא מחוברים:** `ChordTransitionsScreen`, `SongGuidedPathScreen` (הקבצים קיימים).
 
 ---
 
-## 5. נתונים — `assets/chords.json`
+## 5. פיצ'רים לפי מסך
+
+- **בית** — כרטיס «ההתקדמות שלך» (רצף ימים, אקורדים שנוגנו/בשליטה, רמה מומלצת, «המשך מאיפה שהפסקת»), 3 כרטיסי מצב.
+- **אימון אקורד בודד** — בחירת רמה + אקורד (נזכר באחרון), משוב חי לכל מיתר, הודעת צליל זר («המיתר השישי מצלצל…»), חגיגה + רישום התקדמות רק על פגיעה אמיתית (`hitStream`).
+- **אתגר האקורדים** — 30ש׳, +100 לאקורד, בונוס זמן ברצף 5, שיא + Grade לכל מאגר, זמן לכל אקורד נרשם בהתקדמות.
+- **זיהוי חופשי** — כל 52 האקורדים; בין שני אקורדים שנשמעים אותו דבר מדווח הקל.
+- **ספרייה** — 5 טאבים לפי רמה, כוכבי שליטה, ספירת «נוגנו X/Y», גיליון עם דיאגרמה גדולה + שורת התקדמות.
+- **שירים** — חיפוש (שם/אמן/מילים), הכל/עברית/אנגלית, צ׳יפים לז׳אנר ולרמה, קיבוץ לפי ז׳אנר עם צבע/אייקון, תגיות («מילים מלאות», «✓ נוגן», כוכבי משחק). בנגן: תוויות «בית/פזמון», כפתור «משחק קצב».
+- **לימוד פריטות** — 11 דפוסים עם כוכבים (מתוך 9). שיעור: (1) אנימציית גיטרה — מתחילה מכל הגיטרה ועושה זום לאזור הפריטה, יד+מפרט בקצב, מיתרים רוטטים, 3 מהירויות, הסבר לכל תנועה; (2) משחק ב-3 מהירויות (60%/80%/100%) שנפתחות בכוכב; (3) שיר לדוגמה במשחק.
+- **משחק קצב** — סעיף 9.
+- **טיונר** — סעיף 12.
+
+---
+
+## 6. נתונים — אקורדים (`assets/chords.json`)
 
 **52 אקורדים** (EADGBE), כל אחד עם `difficulty` (1–5), `category`, ו־`finger` (1–4) על תווים לחוצים. אקורדים חדשים נוצרו מסקריפט שמחשב `midi`/`noteName` מהאצבוע; `test/content_test.dart` מוודא עקביות לכל הקטלוג.
 
@@ -175,7 +246,32 @@ lib/
 
 ---
 
-## 6. Audio pipeline
+### 6א. שירים ודפוסים
+
+**שירים (`assets/songs.json`, 17):** לכל שיר `language` (`he`/`en`), `genre` (`jewish`, `kids`, `folk`, `spiritual`, `holiday`, `pop_rock`), שורות עם `section` («בית 1», «פזמון»).
+
+- **מילים מלאות (נחלת הכלל):** Amazing Grace (4 בתים), Oh! Susanna, When the Saints, Twinkle Twinkle, Red River Valley, Jingle Bells, Clementine (4 בתים + פזמון), Scarborough Fair, «שלום עליכם» (4 בתים); וגם Happy Birthday, «הנה מה טוב», «דוד מלך ישראל».
+- **לא הורחבו בכוונה:** «התקווה» (אין אקורדים מאומתים לבית 2), House of the Rising Sun (הנוסח המקובל מהמאה ה-20), «יונתן הקטן» (©), Knockin' on Heaven's Door / Let It Be (© — אקורדים בלבד).
+
+**דפוסים (`assets/strum_patterns.json`, 11):** basic_44, pop_rock_8, waltz_34, island_mute, ballad_soft, arpeggio_pima, boom_chick_44, waltz_bass_34, offbeat_reggae, ballad_68, folk_arpeggio — לכל אחד `practiceChordIds` ו-`exampleSongId`.
+
+---
+
+## 7. מעקב התקדמות (`ProgressService`)
+
+SharedPreferences, מפתח `acords_progress_v1` (מסמך JSON אחד), נטען ב-`main.dart`.
+
+- **לכל אקורד:** פגיעות, ימי תרגול, זמן הכי מהיר → שליטה: התחלה (≥1) / בתרגול (≥5) / בשליטה (≥15 ב-2 ימים לפחות).
+- **בחירה אחרונה:** רמה + אקורד באימון.
+- **שירים:** שלב מסלול מודרך + מספר השלמות.
+- **פריטות:** שלב לכל דפוס (מספר מהירויות שעברו).
+- **משחק:** כוכבים ושיא לכל מפתח (`pattern:<id>:<speed>`, `song:<id>`).
+- **כיול:** `mic_v2` = השהיית מיקרופון מהמסך (ms). מפתחות ישנים (`mic`, `touch`) לא בשימוש.
+- **רצף ימים.**
+
+---
+
+## 8. מנוע הזיהוי (Audio pipeline)
 
 ```
 Mic PCM16 44.1k → AudioAnalyzer → ChordDetectionEngine (שעון דגימות, בלי DateTime)
@@ -205,7 +301,28 @@ Mic PCM16 44.1k → AudioAnalyzer → ChordDetectionEngine (שעון דגימו�
 | זיהוי חופשי (52 אקורדים) | — | 100% |
 | טיונר ±3¢ (כולל מיקרופון חלש בבס) | 91%, 18 טעויות מיתר/אוקטבה | 96%, 0 |
 
-### 6א. מצב גיטרה במשחק הקצב — איך נשפטת פריטה (2026-11-09)
+---
+
+## 9. משחק הקצב
+
+**מסך:** `RhythmGameScreen`. **נתונים:** `RhythmChart` (תיבה לכל אקורד; דפוס קצר חוזר למילוי התיבה; בשיר — תיבה לכל קטע עם מילים).
+
+- **מסלול בפרספקטיבה** — התווים מתקרבים מהאופק ומתגדלים; קו פגיעה = 6 מיתרים שרוטטים; ↓ בנתיב שמאל (טורקיז), ↑ בימין (ענבר), ✕/אצבעות במרכז (סגול); פגיעה עפה בכיוון שלה + ניצוצות.
+- **שיפוט (`RhythmJudge`):** מסך — מושלם ±70ms / טוב ±140ms; גיטרה — ±80 / ±170ms. קומבו → מכפיל ×1–×4; כוכבים לפי דיוק (≥60% / 78% / 92%).
+- **מצב מסך:** נגיעה = שיפוט מיידי + צליל אקורד (Karplus–Strong); החלקה בכיוון הלא נכון → «כיוון!» (מורד ל«טוב»).
+- **מצב גיטרה:** כל פריטה נבדקת גם בתוכן (9א); מד עוצמה + «🎸 נשמע!»; אזהרה אחרי 3ש׳ שקט; מטרונום כבוי (המיקרופון היה שומע אותו).
+- **ספירה לאחור:** רק «מתחילים בעוד…» — אין כיול בספירה.
+- **תוצאות:** כוכבים, ניקוד, דיוק, מושלם/טוב/פספוס, קומבו, «אקורד/צליל שגוי», אקורדים ✓, איחור מיקרופון, כפתור «כיילו מחדש» כשהדיוק נמוך, נתיב קבצי אבחון.
+
+### כיול המיקרופון
+
+- **מסך `MicCalibrationScreen`** — עיגול מהבהב ב-70BPM, 2 הבהובי הכנה + עד 10 פריטות. נפתח אוטומטית לפני משחק הגיטרה הראשון; זמין גם מהגדרות הסיבוב ומהתוצאות.
+- **חישוב (`LatencyCalibrator`)** — רק התקפות שעברו `StrokeVerifier.attackStrength ≥ 0.3`; לכל הבהוב — המוקדמת מבין החזקות (≥70% מהחזקה ביותר); חציון + MAD; נשמר רק אם אמין (≥6 פריטות, פיזור ≤75ms).
+- **תוך משחק (`LatencyTrim`)** — תיקון של עד ±100ms מהערך המכויל, לא נשמר.
+- **חותמות זמן** — מיפוי שעון-אודיו → שעון קיר לפי המינימום של (זמן הגעה − זמן אודיו), בלי ג׳יטר עיבוד/מסירה.
+- **עיכוב שיפוט** — במצב גיטרה תו מוכרז כפספוס רק אחרי כיול + 260ms (`GuitarStrokeReferee.judgeDelayMs`), כי האודיו מגיע באיחור.
+
+### 9א. מצב גיטרה — איך נשפטת פריטה (2026-11-09)
 
 ```
 OnsetDetector.forRhythmGame → כל התקפה = מועמד (refractory 58ms)
@@ -228,18 +345,56 @@ OnsetDetector.forRhythmGame → כל התקפה = מועמד (refractory 58ms)
 
 **מגבלות ידועות (מהסימולציה):** פריטה אקראית על מיתר פתוח בודד עדיין מקבלת ~6–10% (בעיקר כשהמיתר שייך באמת לאקורד, למשל רה/סול/סי פתוחים באקורד G); דיבור/זמזום ליד הטלפון בארפג׳ו ~12% כשהקול עובר על התו הנכון; כ-20% מפריטות ה-↑ הרכות עדיין לא נספרות; ↑ שנספר מוקדם מדי (סטיית תזמון עד −95ms ב-5% מהמקרים). כל המספרים מסימולציה — לאמת בהקלטות אמיתיות דרך ״מצב אבחון״.
 
-## 7. פיצ'רים לפי מסך
+---
 
-- **Home** — כניסה לאימון אקורד בודד (+ טיפ על 5 רמות)
-- **Practice** — בחירת רמה (FilterChips) + אקורד; משוב חי; דיאגרמה חיה; tip + confetti
-- **Free play** — זיהוי אקורד מהקטלוג המורחב
-- **Library** — `TabBar` ל־5 רמות; grid קומפקטי; sheet עם דיאגרמה מוגדלת + רמה/קטגוריה
-- **Tuner** — פריסה ללא גלילה (flex 2/5/2); בחירת מיתר; מד סנטים
-- **Transitions** — **מוקפא** (לא בניווט)
+## 10. מצב אבחון (debug בלבד)
+
+מתג «מצב אבחון (לוגים + הקלטה)» במסך הפתיחה של משחק הגיטרה.
+
+**לוגים ל-logcat** (`adb logcat -s flutter | findstr "Acords Diag"`):
+- `LEVEL` — כל 250ms: RMS ו-Flux (מינ׳/חציון/מקס׳), סף ה-Flux, רמת הרקע.
+- `PEAK` — כל שיא Flux עם כל המספרים ו-`ONSET` או סיבות הדחייה (`flux`, `level`, `gate`, `rise`, `cover`, `attack`, `refractory`).
+- `STROKE` — כל פריטה שנשפטה: תוצאה, סיבה, וניתוח `ChordMatcher` לכל מיתר (dB יחסית, סנטים, סטטוס, צליל זר).
+
+**קבצים בסוף סיבוב** — `/sdcard/Android/data/com.chordtrainer.chord_trainer/files/diagnostics/`:
+`NAME.log`, `NAME.wav` (האודיו הגולמי), `NAME.json` (דפוס, אקורדים, BPM, כיול, היסטים בזמן, תוצאה).
+
+```
+adb pull /sdcard/Android/data/com.chordtrainer.chord_trainer/files/diagnostics
+```
+
+מעתיקים זוגות `.json`+`.wav` ל-`test/fixtures/recordings/` (אפשר להוסיף `"label": "idle" | "random" | "correct"`), והספסל `false_positive_bench` משחזר אותם דרך אותו קוד בדיוק ומציג את התוצאה ליד מה שהאפליקציה הראתה.
 
 ---
 
-## 8. טיונר
+## 11. הסימולציה (מה יודעים ומה לא)
+
+**`test/support/realistic_sim.dart`:**
+- **נגן (`PlayerModel`)** — הטיה וג׳יטר בתזמון, משך פריטה 25–80ms, דילוג על בס/מיתר עליון, ↑ שמגיע ל-2–4 מיתרים, מיתר פתוח מיותר מתחת לאקורד, גיטרה לא מכוונת (±15¢ + פיזור), אצבעות/מפרט, עוצמה. מיתרים שמשתנים באקורד הבא נעצרים, פתוחים ממשיכים לצלצל.
+- **טלפון (`PhoneMic`)** — השהיה 80–320ms, HPF 70–260Hz (12/24dB לאוקטבה), EQ, הד חדר, AGC, רעש, עוצמה.
+- **סינתיסייזר מיתר (`guitar_synth.dart`)** — הרמוניות עם אי-הרמוניות, דעיכה שונה לכל הרמוניה, רעש מפרט.
+
+**תוצאות אחרונות (16 תנאים אקראיים, 2026-11-09):**
+
+| | לפני הסבב | אחרי |
+|---|---|---|
+| כיול אמין | 3/8 | **16/16** |
+| טעות כיול | עד −128ms | **19±16ms** |
+| נגינה נכונה — פריטה (pop_rock_8) | 58% | **83%** |
+| נגינה נכונה — בס+פריטה (boom_chick) | 76% | **87%** |
+| נגינה נכונה — ארפג׳ו (pima) | 91% | **92.5%** |
+| פריטה על מיתרים פתוחים בלי אקורד | 0% | 0.5% (פריטה) / 4.5% (ארפג׳ו) |
+| אקורד שגוי | 0% | 0–1% |
+| אקורד מצלצל בלי לנגן | 2–5% | 3–4% |
+| מיתר פתוח בודד אקראי | 0% | 6–10% |
+
+**ספסל זיהויי שווא עם מיקרופון נקי** (`false_positive_bench`): ביקורת נכונה 91–97%; שקט/רעש/דפיקות/השתקות 0%; דיבור ליד הטלפון — 0% בפריטה, ~12% בארפג׳ו.
+
+**חשוב:** זו הערכה של איך טלפון שומע גיטרה, לא מדידה של מכשיר אמיתי. השלב הבא הוא הקלטות אמיתיות (סעיף 10).
+
+---
+
+## 12. טיונר
 
 **מנוע:** `TunerPitchEstimator` — YIN מחליט איזה תו (עמיד לאוקטבות כשהבסיס חלש), ואז חידוד התדר על ספקטרום 8192 (H1, או H2/2, H3/3). חציון 3 קריאות. במיתר נעול: חיפוש ±8 חצאי טון סביבו.
 
@@ -253,7 +408,9 @@ In-tune: ±5 סנט (לוגיקה). מחוג: צביעה ירוקה ~±25.
 
 ---
 
-## 9. UI — דיאגרמות אקורדים
+---
+
+## 13. דיאגרמות אקורדים
 
 `ChordFretboardFrame` / `ChordFretboardChart`:
 
@@ -265,72 +422,100 @@ In-tune: ±5 סנט (לוגיקה). מחוג: צביעה ירוקה ~±25.
 
 ---
 
-## 10. Build / הרשאות
+---
 
-- Android: `RECORD_AUDIO`
-- iOS: `NSMicrophoneUsageDescription`
-- Release signing: עדיין מפתחות debug (template) — לפני store release
-- **Release נעול:** `releases/acords_v1.0.1.apk` (v1.0.1+1) — אל תדרוס בבניית דיבאג; פרטים ב־`HANDOFF_2.md`
-- **דיבאג:** `build/app/outputs/flutter-apk/app-debug.apk`
-- אם `flutter build` נכשל בנתיב OneDrive/עברית — לבנות מעותק ב-`C:\AcordsBuild`
-- **Windows (היסטורי, v1.0.0):** `releases/windows.zip` — לא עודכן בנעילת 1.0.1
+## 14. Build, התקנה וסביבה
+
+- **בנייה:** `flutter build apk --debug` → `build/app/outputs/flutter-apk/app-debug.apk` (לוקח 1–10 דקות). מעתיקים ל-`Downloads` בשם תיאורי.
+- **הרשאות:** Android `RECORD_AUDIO`; iOS `NSMicrophoneUsageDescription`.
+- **חתימת release:** עדיין מפתחות debug — לפני חנות צריך keystore.
+- **SSL / Gradle:** Avast מיירט HTTPS. `android/gradle.properties` מפנה ל-`C:/Users/noam1/.gradle/windows-truststore.jks`; תעודת השורש של Avast יובאה אליו (גיבוי: `windows-truststore.jks.bak-20261012`). אם Avast יחליף תעודה — לייבא שוב.
+- **קבצים שמשתנים מ-`flutter pub get`:** `linux/`, `macos/`, `windows/` (plugin registrants) ו-`pubspec.lock` — מחזירים עם `git checkout -- linux macos windows pubspec.lock` לפני commit.
+- **`.gitignore`:** הכלל `/chord_trainer/` מעוגן לשורש — אחרת הוא מסתיר את `MainActivity.kt` והאפליקציה קורסת בפתיחה.
+- **Push:** מנהל האישורים של Windows שומר משתמש ישן (`roeif`) בלי הרשאה → 403. פתרון לפקודה אחת:
+  `git -c credential.helper= -c credential.helper='!gh auth git-credential' push`
+  (`gh` מחובר כ-`roee-design`). לתיקון קבוע: למחוק את `git:https://github.com` ב-Credential Manager, או `gh auth setup-git`.
+- **Git author:** אין זהות גלובלית; קומיטים עם `git -c user.name=noam1 -c user.email=...`.
+- **BlueStacks:** המופע הראשי (`Pie64`) שבור — חסר `C:\ProgramData\BlueStacks_nxt\Engine\Pie64\Data.vhdx`. המופע «Brawl Stars» (`Pie64_1`, adb `127.0.0.1:5565`) עובד:
+  `"C:\Program Files\BlueStacks_nxt\HD-Player.exe" --instance Pie64_1`, ואז `adb connect 127.0.0.1:5565` ו-`adb install -r <apk>`. BlueStacks נסגר לפעמים באמצע; המיקרופון של המחשב באמולטור לא מייצג טלפון.
+- **adb:** `C:\Users\noam1\platform-tools\adb.exe`.
 
 ---
 
-## 11. פערים ידועים (post-v1)
+## 15. בדיקות וספסלים
 
-1. README מיושן
-2. ~~`test/widget_test.dart` לא תואם UI עברי~~ — תוקן (2026-10-12)
-3. ~~אין persistence~~ — `ProgressService` (2026-10-12)
-4. ~~Pitch = peak-FFT, לא YIN~~ — YIN + חידוד ספקטרלי (2026-10-12)
-5. **הספסל סינתטי** — המספרים בסעיף 6 הם מסינתיסייזר, לא מהקלטות אמיתיות. צריך לאמת על טלפון אמיתי ובחדרים שונים; הצעד הבא המומלץ: מצב "הקלט דוגמה" שישמור WAV + האקורד שנוגן, לכיול על אודיו אמיתי.
-6. **אוקטבות מוכפלות** — מיתר שהתו שלו הוא הרמוניה של מיתר נמוך יותר באקורד (למשל E4 מעל E3) לא ניתן להבחנה בתדר; "מיתר חסר" כזה עדיין עלול להיות "מושלם" (~39% בספסל, רובם מסוג זה).
-7. **שינוי אקורד לגאטו** (הנחת אצבעות על מיתרים מצלצלים בלי פריטה) נספר לפעמים כפריטה (בספסל ~4/8) — מוגבל ע״י הדרישה לאקורד מושלם.
-8. **צלילי האפליקציה עצמה** (קליקי `StrumPreviewService` בשלבי פריטה) נקלטים במיקרופון; צפוי שלא יחסמו פגיעה (דועכים תוך ~100ms), לבדוק על מכשיר.
-9. בארה בצוואר גבוה (למשל `A · בארה`) — לא ניתן לוודא *צורה*: A פתוח יאושר גם כיעד `A · בארה` (אותם צלילים).
-10. חוסר עקביות 5¢ vs 25¢ במחוג טיונר (ללא שינוי)
-11. **זכויות יוצרים:** «יונתן הקטן» מסומן `publicDomain: true` אבל המילים של לוין קיפניס (נפטר 1990) — לא נחלת הכלל בישראל. להחליט: להפוך ל־`instrumental` או להסיר את המילים.
+**`flutter test`** (35 בדיקות, ~30ש׳): content, detection_regression, stroke_verification, guitar_mode_simulation, latency_calibration, rhythm_game, progress_service, widget.
 
-**תוקן ב-v1.0.0 (+8):** overflow דיאגרמות; mic ב-IndexedStack; deadlock מעברים; מטרונום; זיהוי במעברים.
+**ספסלים** (`test/bench`, מדולגים כברירת מחדל — `flutter test <file> --run-skipped`):
 
-**תוקן / השתנה ב-`1.0.1+1`:**
-- תיקון "הצלחה מיידית" במעברים (לפני ההקפאה)
-- קטלוג → 30 אקורדים + 5 רמות
-- הקפאת מעברים מהניווט
-- דיאגרמה עם אצבעות + סריג בצד + חלון גבוה
-- טיונר ללא גלילה מאוזן
+| ספסל | מה מודד |
+|---|---|
+| `mic_deviation_bench_test.dart` | **הראשי למצב גיטרה:** כיול, נגינה נכונה, סיבות לתווים שלא נספרו, סטיות תזמון/רמה/גובה לכל מיתר, זיהויי שווא — דרך טלפונים מדומים. `--dart-define=CONDITIONS=16`, `--dart-define=FP=false` |
+| `false_positive_bench_test.dart` | 10 מקרי שווא + 2 ביקורת דרך הצינור של האפליקציה; משחזר הקלטות מ-`test/fixtures/recordings`. פלט: `build/false_positive_bench/` |
+| `stroke_verify_bench_test.dart` | אימות פריטות: אקורד נכון / פתוח אקראי / ארפג׳ו / מצב סרק |
+| `matcher_bench_test.dart` | `ChordMatcher` ישן מול חדש |
+| `onset_bench_test.dart`, `onset_game_bench_test.dart` | זיהוי פריטות (רגיל / משחק) |
+| `transition_bench_test.dart` | מעברי אקורדים בשירים |
+| `robustness_bench_test.dart` | כיוון, רעש, עוצמה, זיהוי חופשי |
+| `tuner_bench_test.dart` | טיונר ישן מול YIN |
+
+**תמיכה:** `game_replay.dart` (משחזר סיבוב בדיוק כמו האפליקציה), `realistic_sim.dart`, `sim_session.dart` (סימולציית מסך כיול), `fp_scenarios.dart`, `stroke_scenarios.dart`, `guitar_synth.dart`, `legacy_*` (מנוע ישן להשוואה).
 
 ---
 
-## 12. סטטוס מוצר — v1.0.1 (פיתוח)
+## 16. פערים ידועים ומה הלאה
+
+**הכי חשוב:**
+1. **אין אימות על מכשיר אמיתי.** כל מספרי הזיהוי מסימולציה. הצעד הבא: כמה סיבובים עם «מצב אבחון» (סרק / אקראי / נכון) → `test/fixtures/recordings` → ספסל → כיוון לפי מה שהמספרים מראים.
+2. **פריטות ↑ רכות** — כ-20% עדיין לא נספרות בסימולציה; ↑ נשפט לפעמים מוקדם מדי (עד −95ms ב-5%).
+3. **מיתר פתוח בודד אקראי** — 6–10% מתקבלים (בעיקר כשהמיתר באמת שייך לאקורד).
+4. **דיבור/זמזום ליד הטלפון בארפג׳ו** — ~12%.
+
+**נוספים:**
+5. README מיושן.
+6. **אוקטבות מוכפלות** — מיתר שהתו שלו הוא הרמוניה של מיתר נמוך יותר (E4 מעל E3) לא ניתן להבחנה; "מיתר חסר" כזה עלול להיחשב מושלם באימון רגיל.
+7. **מיתר הבס לא נבדק במצב גיטרה** — מיקרופון טלפון לא שומע אותו מספיק.
+8. **שינוי אקורד לגאטו** נספר לפעמים כפריטה.
+9. **בארה בצוואר גבוה** — A פתוח מאושר גם כ-«A · בארה».
+10. **צלילי האפליקציה** (תצוגת פריטה, מטרונום) נקלטים במיקרופון — לכן מטרונום כבוי במצב גיטרה.
+11. **«יונתן הקטן»** מסומן `publicDomain: true` אבל המילים מוגנות (קיפניס נפטר 1990) — להחליט: instrumental או הסרת מילים.
+12. **קוד לא מחובר:** `chord_transitions_screen.dart`, `song_guided_path_screen.dart`.
+13. חוסר עקביות 5¢ / 25¢ במחוג הטיונר.
+
+**תוקן בעבר:** overflow דיאגרמות, deadlock מעברים, MainActivity חסר, פספוס לפני שהאודיו הגיע, כיול שהצטבר, פריטה אקראית שקיבלה 72%, ועוד — ראו Build history.
+
+---
+
+## 17. סטטוס מוצר
 
 | אזור | מצב |
 |------|-----|
-| שלד + ניווט (4 טאבים) | ✅ |
-| אימון אקורד + סינון רמה | ✅ |
-| זיהוי חופשי | ✅ |
-| ספרייה לפי 5 רמות (ללא overflow) | ✅ |
-| דיאגרמה: אצבעות + סריג בצד + חלון | ✅ |
-| טיונר ללא גלילה (flex) | ✅ |
-| isActive / עצירת mic / MicCaptureGuard | ✅ |
-| **קטלוג** | ✅ **52 אקורדים**, difficulty + category + finger |
-| מנוע זיהוי מבוסס פריטה + מעברים | ✅ (מאומת סינתטית; לאמת על מכשיר) |
+| שלד + ניווט (5 טאבים) | ✅ |
+| אימון אקורד + אתגר + זיהוי חופשי | ✅ |
+| ספרייה + דיאגרמות (52 אקורדים) | ✅ |
+| מנוע זיהוי מבוסס פריטה + מעברים | ✅ (סימולציה) |
 | טיונר YIN | ✅ |
 | מעקב התקדמות | ✅ |
-| מעברי אקורדים | ⏸️ **מוקפא** (לא ב־UI) |
-| בדיקות אוטומטיות | ✅ `flutter test` (15) + ספסל `test/bench` |
-| store release | 🔜 v1.1+ |
+| ספריית שירים (חיפוש, שפה, ז׳אנר, מילים) | ✅ |
+| שיעורי פריטה + אנימציה | ✅ |
+| משחק קצב — מצב מסך | ✅ (אושר על ידי המשתמש) |
+| משחק קצב — מצב גיטרה | 🟡 כויל בסימולציה, לאמת על מכשיר |
+| מצב אבחון + ספסלים | ✅ |
+| store release | 🔜 |
 
 ---
 
-## 13. קבצים חשובים
+## 18. קבצים חשובים
 
-1. `assets/chords.json` + `lib/models/chord_definition.dart`
-2. `lib/ui/widgets/chord_fretboard_chart.dart`
-3. `lib/ui/chord_library_screen.dart` + `lib/ui/practice_screen.dart`
-4. `lib/chord/chord_matcher.dart` + `lib/audio/fft_processor.dart`
-5. `lib/audio/pitch_tuner.dart` + `lib/ui/tuner_screen.dart`
-6. `lib/ui/home_screen.dart` (ללא כניסה למעברים)
+1. **זיהוי:** `lib/audio/chord_detection_engine.dart`, `lib/audio/onset_detector.dart`, `lib/chord/chord_matcher.dart`
+2. **מצב גיטרה:** `lib/game/stroke_verifier.dart`, `lib/game/guitar_stroke_referee.dart`, `lib/game/latency_calibration.dart`
+3. **משחק:** `lib/ui/rhythm_game_screen.dart`, `lib/game/rhythm_judge.dart`, `lib/game/rhythm_chart.dart`, `lib/game/rhythm_game_painter.dart`
+4. **שיעורים:** `lib/ui/strum_lesson_screen.dart`, `lib/ui/widgets/guitar_strum_animation.dart`
+5. **שירים:** `assets/songs.json`, `lib/ui/song_practice_screen.dart`, `lib/ui/song_player_screen.dart`
+6. **התקדמות:** `lib/services/progress_service.dart`, `lib/ui/widgets/progress_card.dart`
+7. **אבחון:** `lib/audio/detection_diagnostics.dart`, `test/fixtures/recordings/README.md`
+8. **סימולציה:** `test/support/realistic_sim.dart`, `test/bench/mic_deviation_bench_test.dart`
+9. **קטלוג:** `assets/chords.json`, `lib/models/chord_definition.dart`
 
 ---
 
@@ -341,6 +526,7 @@ In-tune: ±5 סנט (לוגיקה). מחוג: צביעה ירוקה ~±25.
 
 אחרי `flutter build apk` (debug או release):
 
-1. הוסף שורה לטבלת **Build history** ב-`HANDOFF.md`.
-2. עדכן סעיפים רלוונטיים ב-`HANDOFF.md` (ניווט, קטלוג, סטטוס, פערים).
+1. הוסף שורה לטבלת **Build history**.
+2. עדכן את הסעיפים הרלוונטיים (מצב נוכחי, פיצ'רים, סטטוס, פערים).
 3. **Release:** העתק ל-`releases/` רק אחרי `flutter build apk --release` מכוון במפורש — לא בדיבאג.
+4. כל שינוי בזיהוי: להריץ קודם את `mic_deviation_bench` ו-`false_positive_bench` ולתעד את המספרים לפני/אחרי.
