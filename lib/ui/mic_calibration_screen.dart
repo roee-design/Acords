@@ -39,7 +39,7 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
   final Stopwatch _clock = Stopwatch();
   final AudioAnalyzer _analyzer =
       AudioAnalyzer(onsetDetector: OnsetDetector.forRhythmGame());
-  StreamSubscription<DateTime>? _onsetSub;
+  StreamSubscription<int>? _onsetSub;
   StreamSubscription<TimedStrumCapture>? _captureSub;
 
   /// Attacks weaker than this are a ringing chord or noise, not a strum.
@@ -48,7 +48,8 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
 
   var _phase = _CalPhase.intro;
   late LatencyCalibrator _cal;
-  DateTime _startWall = DateTime.now();
+  /// [MonotonicClock] µs at clock start (same clock as strum timestamps).
+  int _startUs = 0;
   double _now = 0;
   double _lastHeard = -100000;
   double _level = 0;
@@ -102,13 +103,13 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
     _clock
       ..reset()
       ..start();
-    _startWall = DateTime.now();
+    _startUs = MonotonicClock.nowUs;
     setState(() => _phase = _CalPhase.running);
     _ticker.start();
   }
 
   /// Any attack: only drives the "heard" flash.
-  void _onOnset(DateTime at) {
+  void _onOnset(int atUs) {
     if (_phase != _CalPhase.running) return;
     _lastHeard = _now;
   }
@@ -120,7 +121,7 @@ class _MicCalibrationScreenState extends State<MicCalibrationScreen>
     final strength =
         StrokeVerifier.attackStrength(e.capture.frame, e.capture.residual);
     if (strength < _minAttackStrength) return;
-    final heard = e.at.difference(_startWall).inMicroseconds / 1000.0;
+    final heard = (e.atUs - _startUs) / 1000.0;
     _cal.addStrum(heard, weight: strength);
   }
 

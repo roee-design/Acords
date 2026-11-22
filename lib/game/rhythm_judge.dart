@@ -143,7 +143,22 @@ class RhythmJudge {
       extras++;
       return InputOutcome(onRest: _isNearRest(timeMs));
     }
+    return _judge(best, timeMs, direction);
+  }
 
+  /// Judges a stroke at [timeMs] as hitting [note] — for a caller that has
+  /// already chosen the note (the guitar-mode referee). Returns an extra
+  /// stroke when [note] is already judged or outside the good window.
+  InputOutcome inputFor(RhythmNote note, double timeMs) {
+    if (results.containsKey(note.index) ||
+        (timeMs - note.timeMs).abs() > goodWindowMs) {
+      extras++;
+      return InputOutcome(onRest: _isNearRest(timeMs));
+    }
+    return _judge(note, timeMs, null);
+  }
+
+  InputOutcome _judge(RhythmNote best, double timeMs, StrokeDirection? direction) {
     final offset = timeMs - best.timeMs;
     final wrongDirection = direction != null &&
         ((best.kind == PatternEventKind.down &&

@@ -90,8 +90,21 @@ class DetectionDiagnostics {
   }
 
   /// Logs a judged strum together with the matcher's analysis of it.
-  void decision(CaptureDecision d) {
-    log('STROKE ${d.toLogLine()} || ${_lastMatch?.toLogLine() ?? '-'}');
+  /// Matcher analysis per attack (a held stroke is committed later, after
+  /// other strums were analysed).
+  final Map<int, String> _matchBySample = {};
+
+  /// Logs one referee decision. [nowMs]: chart time at which it was made
+  /// (when the feedback appears); with the line's `t=` (stroke time after
+  /// latency correction) it shows how late the feedback came.
+  void decision(CaptureDecision d, {double? nowMs}) {
+    final sample = d.onsetSample;
+    final match = sample == null
+        ? (_lastMatch?.toLogLine() ?? '-')
+        : _matchBySample.putIfAbsent(
+            sample, () => _lastMatch?.toLogLine() ?? '-');
+    log('STROKE ${nowMs == null ? '' : 'at=${nowMs.round()} '}'
+        '${d.toLogLine()} || $match');
   }
 
   /// Writes `NAME.log`, `NAME.wav` and `NAME.json` to the app's external

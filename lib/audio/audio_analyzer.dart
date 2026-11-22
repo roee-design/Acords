@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:permission_handler/permission_handler.dart';
@@ -8,16 +7,21 @@ import 'package:record/record.dart';
 import '../chord/chord_matcher.dart';
 import '../models/chord_definition.dart';
 import '../models/feedback_result.dart';
+import 'audio_clock.dart';
 import 'chord_detection_engine.dart';
 import 'onset_detector.dart';
 
+export 'audio_clock.dart' show MonotonicClock;
 export 'chord_detection_engine.dart' show ChordHit, StrumCapture;
 
-/// A strum with its post-strum spectrum and wall-clock time (rhythm game).
+/// A strum with its post-strum spectrum and the [MonotonicClock] time of
+/// its attack (rhythm game, calibration).
 class TimedStrumCapture {
-  const TimedStrumCapture({required this.at, required this.capture});
+  const TimedStrumCapture({required this.atUs, required this.capture});
 
-  final DateTime at;
+  /// [MonotonicClock] µs at which the attack was recorded (+ the constant
+  /// input latency the mic calibration measures).
+  final int atUs;
   final StrumCapture capture;
 }
 
@@ -48,8 +52,8 @@ class AudioAnalyzer {
       StreamController<ChordFeedback>.broadcast();
   final StreamController<ChordHit> _hitController =
       StreamController<ChordHit>.broadcast();
-  final StreamController<DateTime> _onsetController =
-      StreamController<DateTime>.broadcast();
+  final StreamController<int> _onsetController =
+      StreamController<int>.broadcast();
   final StreamController<TimedStrumCapture> _captureController =
       StreamController<TimedStrumCapture>.broadcast();
 
@@ -70,9 +74,9 @@ class AudioAnalyzer {
   /// Confirmed strummed chords (see [ChordDetectionEngine]).
   Stream<ChordHit> get hitStream => _hitController.stream;
 
-  /// Every detected strum attack (wall-clock time of the attack) — used by
-  /// the rhythm game to judge timing.
-  Stream<DateTime> get onsetStream => _onsetController.stream;
+  /// Every detected strum attack ([MonotonicClock] µs of the attack) — the
+  /// "heard" flash of the rhythm game and calibration.
+  Stream<int> get onsetStream => _onsetController.stream;
 
   /// One event per strum, ~70–120 ms after it, with the spectrum needed to
   /// check which notes were played.
@@ -98,9 +102,15 @@ class AudioAnalyzer {
     return bytes;
   }
 
-  /// Wall-clock time (µs since epoch) of sample 0 of the current session,
-  /// once audio has arrived (see [_onPcmChunk]).
-  int? get sampleZeroWallUs => _sampleZeroWallUs;
+  /// [MonotonicClock] µs of sample 0 of the current session, once audio
+  /// has arrived (see [AudioClockMapper]).
+  int? get sampleZeroUs => _clock.sampleZeroUs;
+
+  /// [MonotonicClock] µs up to which every attack's capture has been
+  /// published on [strumCaptureStream] (null before audio arrives).
+  int? get capturedUntilUs => _clock.sampleZeroUs == null
+      ? null
+      : _clock.usOfSample(_engine.sampleClock - _engine.captureLagSamples);
 
   bool get isListening => _isListening;
   bool get isDisposed => _disposed;
@@ -281,7 +291,7 @@ class AudioAnalyzer {
       }
 
       _engine.reset();
-      _sampleZeroWallUs = null;
+      _clock.reset();
       // Re-arm the current target on the fresh clock.
       final target = _targetChord;
       if (!_freePlayMode && target != null) {
@@ -352,49 +362,26 @@ class AudioAnalyzer {
     _feedbackController.add(_matcher.freePlayWaiting(0));
   }
 
-  /// Wall-clock time (µs since epoch) of sample 0 of the current session.
-  ///
-  /// Audio arrives in chunks, sometimes late, never early — so the smallest
-  /// "arrival time − audio time" seen is the best estimate of the true
-  /// mapping. Using it (instead of "now" when a chunk is processed) removes
-  /// the delivery and processing jitter from every strum timestamp; what is
-  /// left is a constant input latency that calibration measures once.
-  int? _sampleZeroWallUs;
+  /// Sample clock → [MonotonicClock] time.
+  late final AudioClockMapper _clock = AudioClockMapper(sampleRate: sampleRate);
 
   void _onPcmChunk(List<int> pcmBytes) {
     if (!_isListening) return;
-    final arrivalUs = DateTime.now().microsecondsSinceEpoch;
+    final arrivalUs = MonotonicClock.nowUs;
     _recording?.add(pcmBytes);
     final frames = _engine.addPcm16(pcmBytes);
-    final audioUs = _engine.sampleClock * 1000000 ~/ sampleRate;
-    final candidate = arrivalUs - audioUs;
-    final current = _sampleZeroWallUs;
-    // Track the minimum, but let it creep up slowly (0.1 ms per chunk) so a
-    // drift between the audio and system clocks cannot freeze a stale value.
-    _sampleZeroWallUs =
-        current == null ? candidate : min(current + 100, candidate);
+    _clock.onChunk(arrivalUs, _engine.sampleClock);
     final onsets = _engine.takeOnsets();
     if (onsets.isNotEmpty && !_onsetController.isClosed) {
-      final zero = _sampleZeroWallUs!;
       for (final sample in onsets) {
-        _onsetController.add(
-          DateTime.fromMicrosecondsSinceEpoch(
-            zero + sample * 1000000 ~/ sampleRate,
-          ),
-        );
+        _onsetController.add(_clock.usOfSample(sample));
       }
     }
     final captures = _engine.takeCaptures();
     if (captures.isNotEmpty && !_captureController.isClosed) {
-      final zero = _sampleZeroWallUs!;
       for (final c in captures) {
         _captureController.add(
-          TimedStrumCapture(
-            at: DateTime.fromMicrosecondsSinceEpoch(
-              zero + c.onsetSample * 1000000 ~/ sampleRate,
-            ),
-            capture: c,
-          ),
+          TimedStrumCapture(atUs: _clock.usOfSample(c.onsetSample), capture: c),
         );
       }
     }

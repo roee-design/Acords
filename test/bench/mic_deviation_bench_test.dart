@@ -64,6 +64,12 @@ String _reason(CaptureDecision d) {
       return 'no note in window (timing)';
     case CaptureOutcome.unanchored:
       return 'unanchored';
+    case CaptureOutcome.held:
+      return 'held';
+    case CaptureOutcome.outranked:
+      return 'outranked by a stronger attack for the same note';
+    case CaptureOutcome.duplicate:
+      return 'duplicate delivery';
     case CaptureOutcome.notFresh:
       if (d.detail.contains('too quiet')) return 'too quiet';
       if (d.detail.contains('not plucked')) return 'not fresh: string not plucked';

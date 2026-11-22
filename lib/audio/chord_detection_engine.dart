@@ -40,9 +40,21 @@ class StrumCapture {
     required this.strokeStartSample,
     required this.frame,
     required this.residual,
+    this.nextOnsetSample,
+    this.leadFrame,
   });
 
   final int onsetSample;
+
+  /// The next attack, when it came while [frame] was being recorded (then
+  /// [frame] also contains whatever that attack played).
+  final int? nextOnsetSample;
+
+  /// Spectrum of only this attack's own sound — from just after it up to
+  /// [nextOnsetSample] — when a next attack cut into [frame]. A ringing
+  /// chord "breathing" just before a real strum produces such an attack:
+  /// its [frame] holds the real strum, its [leadFrame] does not.
+  final SpectrumFrame? leadFrame;
 
   /// Start of the stroke this attack belongs to (the first of a run of
   /// attacks at most ~120 ms apart); [residual] ends here.
@@ -199,6 +211,12 @@ class ChordDetectionEngine {
     return out;
   }
   int get sampleClock => _clock;
+
+  /// Every attack before sample `sampleClock − this` has had its
+  /// [StrumCapture] emitted (pick-noise skip + capture span + the onset
+  /// detector's report lag, see [_emitReadyCaptures]).
+  int get captureLagSamples =>
+      _attackSkipSamples + captureSamples + _onsets.reportLagSamples;
   int? get lastStrumSample => _strumStart;
   ChordDefinition? get target => _target;
   bool get isFreePlay => _freePlay != null;
@@ -340,7 +358,10 @@ class ChordDetectionEngine {
       final (onset, beforeEnd) = _captureQueue.first;
       final postStart = onset + _attackSkipSamples;
       final postEnd = postStart + captureSamples;
-      if (_clock < postEnd) break;
+      // Wait until every attack inside the span has been reported (the
+      // detector decides on a hop one hop later): which attacks count as
+      // "next" must not depend on how the audio was chunked.
+      if (_clock < postEnd + _onsets.reportLagSamples) break;
       _captureQueue.removeAt(0);
       final preStart = beforeEnd - _residualSamples;
       // Skipped if its audio was already overwritten (a very long chunk).
@@ -363,12 +384,35 @@ class ChordDetectionEngine {
           _residualSamples,
         );
       }
+      // A later attack inside this capture's span (all of them are known by
+      // now, see above). Keep the spectrum of this attack's own sound too.
+      int? next;
+      SpectrumFrame? lead;
+      if (_captureQueue.isNotEmpty && _captureQueue.first.$1 < postEnd) {
+        next = _captureQueue.first.$1;
+        final leadLength = next - postStart;
+        if (leadLength >= _minLeadSamples) {
+          final span = _captureSpan(postStart, leadLength);
+          var leadSq = 0.0;
+          for (final v in span) {
+            leadSq += v * v;
+          }
+          lead = SpectrumFrame(
+            magnitudes: _fft.computeMagnitudesOfTail(span, leadLength),
+            fftSize: fftSize,
+            sampleRate: sampleRate.toDouble(),
+            inputLevel: sqrt(leadSq / leadLength),
+          );
+        }
+      }
       _pendingCaptures.add(
         StrumCapture(
           onsetSample: onset,
           strokeStartSample: beforeEnd,
           frame: frame,
           residual: residual,
+          nextOnsetSample: next,
+          leadFrame: lead,
         ),
       );
     }
@@ -383,6 +427,11 @@ class ChordDetectionEngine {
   }
 
   static const int _residualSamples = 4096;
+
+  /// Shortest own-sound span worth analysing (~25 ms). Attacks are at least
+  /// the detector's refractory (58 ms in the game) apart, so in practice the
+  /// span is ≥ 48 ms.
+  static const int _minLeadSamples = 1100;
 
   List<double>? _spectrumBefore(int sample) {
     final back = _clock - sample; // samples recorded after the strum

@@ -33,7 +33,11 @@ class GameRunResult {
     required this.peakRejections,
     required this.decisions,
     required this.log,
+    this.decidedAtMs = const {},
   });
+
+  /// Chart time at which each attack (sample clock) got its final decision.
+  final Map<int, double> decidedAtMs;
 
   final RhythmJudge judge;
 
@@ -70,6 +74,11 @@ GameRunResult replayGame({
   void Function(CaptureDecision decision, StrumCapture capture)? onCapture,
   void Function(OnsetHopRecord record)? onHop,
   StrokeVerifier Function(ChordMatcher matcher)? verifierFactory,
+  int chunkSamples = 1764,
+  double? holdMs,
+  int Function(int chunkIndex)? chunkOf,
+  double processingDelayMs = 0,
+  bool deliverTwice = false,
 }) {
   final engine = ChordDetectionEngine(
     sampleRate: sampleRate,
@@ -110,16 +119,53 @@ GameRunResult replayGame({
     verifier: verifierFactory?.call(engine.matcher) ??
         StrokeVerifier(engine.matcher, referenceA4Hz: catalog.referenceA4Hz),
     chordForBar: (i) => catalog.chordById(chart.bars[i].chordId),
+    holdMs: holdMs ?? 150,
   );
   final outcomes = <CaptureOutcome, int>{};
   final decisions = <CaptureDecision>[];
+  // A held capture is reported again when it is committed; callbacks see
+  // each capture's *final* decision once (hit, or why it did not score).
+  final captureOf = <int, StrumCapture>{};
+  final matchOf = <int, ChordMatchRecord?>{};
+  final pending = <int>{};
+  // Chart time at which each attack's final decision was made.
+  final decidedAt = <int, double>{};
+  var currentNow = 0.0;
+  void report(CaptureDecision d, StrumCapture c) {
+    onDecision?.call(d, matchOf[c.onsetSample]);
+    onCapture?.call(d, c);
+  }
+
+  void record(CaptureDecision d, StrumCapture? c) {
+    diag.decision(d, nowMs: currentNow);
+    decisions.add(d);
+    outcomes[d.outcome] = (outcomes[d.outcome] ?? 0) + 1;
+    final sample = d.onsetSample;
+    if (sample == null) return;
+    final capture = c ?? captureOf[sample];
+    if (capture == null) return;
+    if (d.outcome == CaptureOutcome.held) {
+      pending.add(sample);
+      return;
+    }
+    if (c == null) pending.remove(sample); // committed from hold
+    if (d.outcome == CaptureOutcome.duplicate) return;
+    decidedAt[sample] = currentNow;
+    report(d, capture);
+  }
   var currentBar = -1;
 
-  const chunk = 1764; // ~40 ms, like the recorder
-  for (var s = 0; s < audio.length; s += chunk) {
+  var chunkIndex = 0;
+  for (var s = 0; s < audio.length;) {
+    // Default ~40 ms, like the recorder; [chunkOf] for irregular delivery.
+    final chunk = max(1, chunkOf?.call(chunkIndex++) ?? chunkSamples);
     final e = min(audio.length, s + chunk);
     engine.addSamples(Float32List.sublistView(audio, s, e));
-    final now = e * 1000 / sampleRate - chartStartMs;
+    s = e;
+    // [processingDelayMs]: the audio reaches the referee this much later
+    // than it was recorded (a busy UI thread), on top of the mic latency.
+    final now = e * 1000 / sampleRate - chartStartMs + processingDelayMs;
+    currentNow = now;
 
     // Same bar tracking as the screen (target chord for the chord bonus).
     final bar = chart.barAt(max(0.0, now + 60));
@@ -134,22 +180,47 @@ GameRunResult replayGame({
       if (now < 0) continue;
       lastMatch = null;
       final d = referee.onCapture(heard, c, nowMs: now);
-      onDecision?.call(d, lastMatch);
-      onCapture?.call(d, c);
-      diag.decision(d);
-      decisions.add(d);
-      outcomes[d.outcome] = (outcomes[d.outcome] ?? 0) + 1;
+      captureOf[c.onsetSample] = c;
+      matchOf[c.onsetSample] = lastMatch;
+      record(d, c);
+      if (deliverTwice) record(referee.onCapture(heard, c, nowMs: now), c);
     }
-    judge
-        .advance(
-          now -
-              calibrationMs -
-              referee.trim.correctionMs -
-              GuitarStrokeReferee.judgeDelayMs,
-        )
-        .forEach(referee.resolveMissed);
+    // Same order as the screen's tick: commit held candidates, then misses.
+    final judgedUntil = now -
+        calibrationMs -
+        referee.trim.correctionMs -
+        GuitarStrokeReferee.judgeDelayMs;
+    // Every attack before this has had its capture processed above.
+    final capturedUntil = (engine.sampleClock - engine.captureLagSamples) *
+            1000 /
+            sampleRate -
+        chartStartMs -
+        calibrationMs -
+        referee.trim.correctionMs;
+    for (final d in referee.flush(judgedUntil, capturedUntilMs: capturedUntil)) {
+      record(d, null);
+    }
+    judge.advance(judgedUntil).forEach(referee.resolveMissed);
+  }
+  for (final d in referee.flush(double.infinity)) {
+    record(d, null);
   }
   judge.advance(double.infinity).forEach(referee.resolveMissed);
+  // Held candidates that a stronger attack replaced never got committed.
+  for (final sample in pending) {
+    final c = captureOf[sample]!;
+    final d = decisions.lastWhere((x) => x.onsetSample == sample);
+    report(
+      CaptureDecision(
+        outcome: CaptureOutcome.outranked,
+        timeMs: d.timeMs,
+        note: d.note,
+        detail: 'replaced by a stronger attack · ${d.detail}',
+        onsetSample: sample,
+      ),
+      c,
+    );
+  }
   diag.detach();
   return GameRunResult(
     judge: judge,
@@ -158,6 +229,7 @@ GameRunResult replayGame({
     peakRejections: peakRejections,
     decisions: decisions,
     log: diag.lines,
+    decidedAtMs: decidedAt,
   );
 }
 

@@ -100,13 +100,15 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   var _busy = false;
   String? _error;
 
-  DateTime _startWall = DateTime.now();
+  /// [MonotonicClock] µs at chart clock start (same clock as the strum
+  /// timestamps).
+  int _startUs = 0;
   double _leadInMs = 0;
   /// Latency correction for this run: measured mic latency (guitar) or 0.
   int _calibration = 0;
   int _lastBeatTicked = -1000;
   int _currentBar = -1;
-  StreamSubscription<DateTime>? _onsetSub;
+  StreamSubscription<int>? _onsetSub;
   StreamSubscription<ChordHit>? _hitSub;
   final Map<int, (double, double, int?)> _pointers = {}; // id → (t, y, note)
   var _newBest = false;
@@ -233,7 +235,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     _clock
       ..reset()
       ..start();
-    _startWall = DateTime.now();
+    _startUs = MonotonicClock.nowUs;
     setState(() {
       _busy = false;
       _phase = _Phase.countIn;
@@ -257,7 +259,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     if (diag == null) return;
     diag.detach();
     final j = _judge;
-    final zero = _analyzer.sampleZeroWallUs;
+    final zero = _analyzer.sampleZeroUs;
     final name = '${DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first}'
         '_${widget.progressKey.replaceAll(':', '_')}';
     try {
@@ -276,9 +278,8 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
           'calibrationMs': _calibration,
           'trimFinalMs': _trim.correctionMs,
           // Chart time of a sample = sample/rate − this − leadIn − calibration.
-          'sampleZeroToStartMs': zero == null
-              ? null
-              : (_startWall.microsecondsSinceEpoch - zero) / 1000.0,
+          'sampleZeroToStartMs':
+              zero == null ? null : (_startUs - zero) / 1000.0,
           'perfectWindowMs': j.perfectWindowMs,
           'goodWindowMs': j.goodWindowMs,
           'result': {
@@ -375,6 +376,24 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
     final judgeDelay = _mode == GameInputMode.guitar
         ? _calibration + _trim.correctionMs + GuitarStrokeReferee.judgeDelayMs
         : 30;
+    if (_mode == GameInputMode.guitar) {
+      // Held candidates (see GuitarStrokeReferee) are judged before their
+      // note could be declared missed.
+      final capturedUs = _analyzer.capturedUntilUs;
+      final capturedUntil = capturedUs == null
+          ? null
+          : (capturedUs - _startUs) / 1000.0 -
+              _leadInMs -
+              _calibration -
+              _trim.correctionMs;
+      for (final d in _referee.flush(
+        now - judgeDelay,
+        capturedUntilMs: capturedUntil,
+      )) {
+        _diagnostics?.decision(d, nowMs: now);
+        _present(d.input!, now);
+      }
+    }
     final missed = _judge.advance(now - judgeDelay);
     if (missed.isNotEmpty) {
       // Missed although a stroke was heard → say what was wrong with it.
@@ -410,7 +429,7 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
 
   /// Raw strum attack: only drives the "נשמע!" flash. Judging waits for the
   /// strum's spectrum ([_onCapture]) so *what* was played can be checked.
-  void _onOnset(DateTime at) {
+  void _onOnset(int atUs) {
     _lastHeardMs.value = _nowMs;
     _view
       ..lastStrokeMs = _nowMs
@@ -421,12 +440,12 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
   /// for, checks the notes against that bar's chord and judges its timing.
   void _onCapture(TimedStrumCapture e) {
     if (_phase != _Phase.playing) return;
-    final heard = e.at.difference(_startWall).inMicroseconds / 1000.0 -
+    final heard = (e.atUs - _startUs) / 1000.0 -
         _leadInMs -
         _calibration;
     final now = _nowMs;
     final decision = _referee.onCapture(heard, e.capture, nowMs: now);
-    _diagnostics?.decision(decision);
+    _diagnostics?.decision(decision, nowMs: now);
     switch (decision.outcome) {
       case CaptureOutcome.hit:
         _present(decision.input!, now);
@@ -434,6 +453,9 @@ class _RhythmGameScreenState extends State<RhythmGameScreen>
       case CaptureOutcome.notFresh:
       case CaptureOutcome.unanchored:
       case CaptureOutcome.noNote:
+      case CaptureOutcome.held:
+      case CaptureOutcome.outranked:
+      case CaptureOutcome.duplicate:
         break;
     }
   }

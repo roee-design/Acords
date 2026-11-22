@@ -128,6 +128,11 @@ class OnsetDetector {
   final int frameSize;
   final int hopSize;
 
+  /// An onset at sample X is reported once sample X + this has been
+  /// processed: X starts a hop, and that hop is decided (peak picking) when
+  /// the hop after it is complete.
+  int get reportLagSamples => 2 * hopSize;
+
   /// Minimum hop RMS for an onset (rejects hiss / handling noise).
   final double minLevel;
 
